@@ -10,8 +10,14 @@ class Settings(BaseSettings):
     USER_NAME: str = os.getenv('USER_NAME', '')
     PASSWORD: str = os.getenv('PASSWORD', '')
 
+    print('it hits here')
+    print("USER_NAME:", os.getenv("USER_NAME"))
+    print("PASSWORD:", os.getenv("PASSWORD"))
+    print(os.getenv("DATABASE_URL"))
+
     @property
     def DB_URL(self):
+        
         if self.ENV_MODE == "dev":
             return self.DEV_DB_URL
         else:
@@ -56,7 +62,7 @@ class DevSettings(Settings):
     ENV_MODE: str = 'dev'
 
     # Database settings for development
-    DEV_DB_URL: str = "sqlite:///./dev.db"
+    DEV_DB_URL: str = os.getenv('DEV_DB_URL', "postgresql://postgres:OaeLyLXCTOGiWziFWVJiNHYFkPkOOZOc@postgres.railway.internal:5432/railway")
 
     model_config = SettingsConfigDict(env_file=".env", extra='allow')
 

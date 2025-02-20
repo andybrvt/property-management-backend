@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 import os
 import uvicorn
 from fastapi import FastAPI
@@ -8,8 +9,13 @@ from backend.fastapi.core.middleware import setup_cors, setup_session, add_doc_p
 from backend.fastapi.core.lifespan import lifespan
 from backend.fastapi.core.routers import setup_routers
 
+
+load_dotenv()
+
 # Initiate a FastAPI App.
 app = FastAPI(lifespan=lifespan)
+
+#to run app use: python -m backend.fastapi.main
 
 # Frontend
 templates = Jinja2Templates(directory="frontend/login/templates")
