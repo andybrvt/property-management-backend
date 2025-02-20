@@ -10,6 +10,9 @@ def setup_cors(app):
         global_settings.API_BASE_URL,
         "http://localhost",
         "http://localhost:5000",
+        "https://*.ngrok-free.app",
+        "https://*.ngrok.io",
+        "*"
     ]
 
     # Add CORS middleware
@@ -19,6 +22,7 @@ def setup_cors(app):
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["*"]
     )
 
 def setup_session(app):

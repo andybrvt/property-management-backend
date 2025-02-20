@@ -33,6 +33,6 @@ if __name__ == "__main__":
     uvicorn.run(
         app="backend.fastapi.main:app",
         host = args.host,
-        port=int(os.getenv("PORT", 5000)),
+        port=int(os.getenv("PORT", 3000)),
         reload=args.mode == "dev"
     )
