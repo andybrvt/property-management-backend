@@ -164,3 +164,8 @@ pip-selfcheck.json
 /tmp
 
 # End of https://www.toptal.com/developers/gitignore/api/python
+
+migrations/versions/*
+
+.env
+*.env

@@ -10,11 +10,6 @@ class Settings(BaseSettings):
     USER_NAME: str = os.getenv('USER_NAME', '')
     PASSWORD: str = os.getenv('PASSWORD', '')
 
-    print('it hits here')
-    print("USER_NAME:", os.getenv("TWILIO_ACCOUNT_SID"))
-    print("PASSWORD:", os.getenv("TWILIO_AUTH_TOKEN"))
-    print(os.getenv("DATABASE_URL"))
-
     @property
     def DB_URL(self):
         

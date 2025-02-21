@@ -9,6 +9,7 @@ class Message(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     content = Column(String)
+    new_column = Column(String)
 
     def __repr__(self):
         return f"<Message(id={self.id}, content={self.content})>"
