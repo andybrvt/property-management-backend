@@ -9,11 +9,13 @@ from dotenv import load_dotenv
 load_dotenv()  # This loads environment variables from the .env file
 
 
-
+from backend.fastapi.models.user import User
+from backend.fastapi.models.property import Property
 from backend.fastapi.dependencies.database import Base
 from backend.fastapi.models.lead import Lead
 from backend.fastapi.models.message import Message
 from backend.fastapi.models.meeting import Meeting
+
 
 
 from backend.fastapi.core.init_settings import global_settings
