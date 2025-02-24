@@ -1,65 +1,64 @@
-from typing import List
-from uuid import UUID
-from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy.ext.asyncio import AsyncSession
-from backend.fastapi.dependencies.database import get_sync_db, get_async_db
-from backend.fastapi.models import Message
-from backend.fastapi.schemas import (
-    MessageBase,
-    MessageCreate,
-)
+from backend.fastapi.models.message import Message
+from typing import Dict, Any, List
+from uuid import UUID
+from typing import Optional  
 
-class MessageService:
-    def __init__(self, db_sync: Session = Depends(get_sync_db), db_async: AsyncSession = Depends(get_async_db)):
-        self.db_sync = db_sync
-        self.db_async = db_async
 
-    def create_message(self, message_data: MessageCreate) -> Message:
-        db_message = Message(**message_data.model_dump())
-        self.db_sync.add(db_message)
-        self.db_sync.commit()
-        self.db_sync.refresh(db_message)
-        return db_message
-    
-    async def create_message_async(self, message_data: MessageCreate) -> Message:
-        db_message = Message(**message_data.model_dump())
-        self.db_async.add(db_message)
-        await self.db_async.commit()
-        await self.db_async.refresh(db_message)
-        return db_message
+'''
+# Create a new message from dictionary data (async)
+async def create_message_dict_async(db: Session, message_data: Dict[str, Any]) -> Message:
+    """Create a new message asynchronously"""
+    db_message = Message(**message_data)
+    db.add(db_message)
+    db.commit()
+    db.refresh(db_message)
+    return db_message
 
-    def get_messages(self, skip: int = 0, limit: int = 30) -> List[Message]:
-        return self.db_sync.query(Message).offset(skip).limit(limit).all()
+'''
 
-    def get_message(self, message_id: UUID) -> Message:
-        db_message = self.db_sync.query(Message).filter(Message.id == message_id).first()
-        if db_message is None:
-            raise HTTPException(status_code=404, detail="Message not found")
-        return db_message
+# Create a new message from dictionary data (sync)
+def create_message(db: Session, message_data: Dict[str, Any]) -> Message:
+    """Create a new message"""
+    db_message = Message(**message_data)
+    db.add(db_message)
+    db.commit()
+    db.refresh(db_message)
+    return db_message
 
-    def update_message(self, message_id: UUID, message_data: MessageBase) -> Message:
-        db_message = self.db_sync.query(Message).filter(Message.id == message_id).first()
-        if db_message is None:
-            raise HTTPException(status_code=404, detail="Message not found")
-        for key, value in message_data.model_dump(exclude_unset=True).items():
+# Get a message by its ID
+def get_message(db: Session, message_id: UUID) -> Message:
+    """Get a message by ID"""
+    return db.query(Message).filter(Message.id == message_id).first()
+
+# Get all messages for a lead (with pagination)
+def get_messages_for_lead(db: Session, lead_id: UUID, skip: int = 0, limit: int = 10) -> List[Message]:
+    """Get all messages for a lead with pagination"""
+    return db.query(Message).filter(Message.lead_id == lead_id).offset(skip).limit(limit).all()
+
+# Get all messages (without lead-specific filtering)
+def get_all_messages(db: Session, skip: int = 0, limit: int = 10) -> List[Message]:
+    """Retrieve all messages with pagination"""
+    return db.query(Message).offset(skip).limit(limit).all()
+
+def update_message(db: Session, message_id: UUID, message_data: Dict[str, Any]) -> Optional[Message]:
+    """Update an existing message"""
+    db_message = db.query(Message).filter(Message.id == message_id).first()
+    if db_message:
+        for key, value in message_data.items():
             setattr(db_message, key, value)
-        self.db_sync.commit()
-        self.db_sync.refresh(db_message)
-        return db_message
+        db.commit()
+        db.refresh(db_message)
+        return db_message  # ✅ Return the updated message
+    return None  # ✅ Return None if message does not exist
 
-    def delete_message(self, message_id: UUID) -> Message:
-        db_message = self.db_sync.query(Message).filter(Message.id == message_id).first()
-        if db_message is None:
-            raise HTTPException(status_code=404, detail="Message not found")
-        self.db_sync.delete(db_message)
-        self.db_sync.commit()
-        return db_message
+def delete_message(db: Session, message_id: UUID) -> Optional[Message]:
+    """Delete a message by its ID"""
+    db_message = db.query(Message).filter(Message.id == message_id).first()
 
-async def create_message_dict_async(db: AsyncSession, data: dict):
-    # If not, insert the new model asynchronously
-    db_data = Message(**data)
-    db.add(db_data)
-    await db.commit()  
-    await db.refresh(db_data)  
-    return db_data
+    if db_message:
+        db.delete(db_message)
+        db.commit()
+        return db_message  # ✅ Return deleted message
+    
+    return None  # ✅ Explicitly return None if message not found

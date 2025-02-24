@@ -1,24 +1,20 @@
 from sqlalchemy.orm import Session
-from models.meeting import Meeting
-from schemas.meeting import MeetingCreate
+from uuid import UUID
+from backend.fastapi.models.meeting import Meeting
+from backend.fastapi.schemas.meeting import MeetingCreate
 
-def create_meeting(db: Session, meeting_data: dict):
-    db_meeting = Meeting(**meeting_data)
+# Create a new meeting
+def create_meeting(db: Session, meeting: MeetingCreate, lead_id: UUID):
+    db_meeting = Meeting(lead_id=lead_id, **meeting.dict())
     db.add(db_meeting)
     db.commit()
     db.refresh(db_meeting)
     return db_meeting
 
-def get_meetings(db: Session, lead_id: int):
-    return db.query(Meeting).filter(Meeting.lead_id == lead_id).all()
-
-def get_meeting(db: Session, meeting_id: int):
+# Get a meeting by ID
+def get_meeting(db: Session, meeting_id: UUID):
     return db.query(Meeting).filter(Meeting.id == meeting_id).first()
 
-def update_meeting_status(db: Session, meeting_id: int, status: str):
-    db_meeting = get_meeting(db, meeting_id)
-    if db_meeting:
-        db_meeting.status = status
-        db.commit()
-        db.refresh(db_meeting)
-    return db_meeting 
+# Get all meetings for a lead
+def get_meetings_for_lead(db: Session, lead_id: UUID, skip: int = 0, limit: int = 10):
+    return db.query(Meeting).filter(Meeting.lead_id == lead_id).offset(skip).limit(limit).all()
