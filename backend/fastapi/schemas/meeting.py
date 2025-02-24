@@ -1,18 +1,33 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 
-class MeetingBase(BaseModel):
-    meeting_time: datetime
-    property_details: str
-    status: Optional[str] = "scheduled"
+class LeadBase(BaseModel):
+    name: str
+    email: EmailStr  # ✅ Ensure valid email format
+    phone: str
+    income: Optional[int] = None
+    has_pets: bool = False
+    rented_before: bool = False
+    status: Optional[str] = "new"
 
-class MeetingCreate(MeetingBase):
-    pass  # Schema for creating a meeting
+class LeadCreate(LeadBase):
+    pass  # ✅ No changes needed for creating a lead
 
-class Meeting(MeetingBase):
+class LeadUpdate(LeadBase):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    income: Optional[int] = None
+    has_pets: Optional[bool] = None
+    rented_before: Optional[bool] = None
+    status: Optional[str] = None
+
+class LeadSchema(LeadBase):
     id: UUID
-    lead_id: UUID
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))  # ✅ Fixes timestamp issue
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     class Config:
-        orm_mode = True  # To work with SQLAlchemy models
+        from_attributes = True  # ✅ Pydantic v2 way to work with SQLAlchemy

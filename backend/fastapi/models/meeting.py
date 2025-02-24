@@ -15,7 +15,7 @@ class Meeting(Base):
     status = Column(String, default="scheduled")  # Status of the meeting (e.g., 'scheduled', 'completed', 'cancelled')
 
     # Relationship to the Lead model
-    lead = relationship("Lead", back_populates="meetings")
+    #lead = relationship("Lead", back_populates="meetings")
 
     def __repr__(self):
         return f"<Meeting(id={self.id}, meeting_time={self.meeting_time}, status={self.status})>"

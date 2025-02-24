@@ -1,10 +1,11 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import Optional
 from uuid import UUID
+from datetime import datetime, timezone
 
 class LeadBase(BaseModel):
     name: str
-    email: str
+    email: EmailStr  # ✅ Ensure valid email format
     phone: str
     income: Optional[int] = None
     has_pets: bool = False
@@ -12,16 +13,21 @@ class LeadBase(BaseModel):
     status: Optional[str] = "new"
 
 class LeadCreate(LeadBase):
-    pass  # Additional validation if needed when creating a lead
+    pass  # ✅ No changes needed for creating a lead
 
-class LeadUpdate(LeadBase):
-    status: Optional[str] = None
+class LeadUpdate(BaseModel):  # ✅ Now allows partial updates
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
     income: Optional[int] = None
+    has_pets: Optional[bool] = None
+    rented_before: Optional[bool] = None
+    status: Optional[str] = None
 
-class Lead(LeadBase):
+class LeadSchema(LeadBase):
     id: UUID
-    created_at: str
-    updated_at: str
+    created_at: datetime = datetime.now(timezone.utc)  # ✅ Ensure UTC timestamps
+    updated_at: datetime = datetime.now(timezone.utc)
 
     class Config:
-        orm_mode = True  # This tells Pydantic to work with SQLAlchemy models
+        from_attributes = True  # ✅ Pydantic v2 way to work with SQLAlchemy
