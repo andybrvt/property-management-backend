@@ -22,43 +22,42 @@ async def receive_sms(request: Request, db: Session = Depends(get_sync_db)):
         form_data = await request.form()
         from_number = form_data.get("From", "").strip()
         message_body = form_data.get("Body", "").strip()
-        logger.info(f"Incoming SMS from {from_number}: {message_body}")
+        logger.info(f"📩 Incoming SMS from {from_number}: {message_body}")
 
     except Exception as e:
         logger.error(f"❌ Error parsing incoming SMS: {e}")
         return {"status": "error", "message": "Failed to process request"}
 
-    # ✅ Format phone number
-    formatted_number = from_number  # Twilio already sends in correct format
-    logger.info(f"Formatted Phone: {formatted_number}")
+    # ✅ Format phone number (Twilio already sends in correct format)
+    formatted_number = from_number  
+    logger.info(f"📞 Formatted Phone: {formatted_number}")
 
     # ✅ Find or create lead
     try:
         lead = get_or_create_lead(db, formatted_number, create_new=True)
         is_new_lead = lead.status == "new"
 
-        logger.info(f"Lead found/created: {lead.id} | New Lead: {is_new_lead}")
+        logger.info(f"🆔 Lead found/created: {lead.id} | New Lead: {is_new_lead}")
 
     except Exception as e:
         logger.error(f"❌ Error retrieving or creating lead: {e}")
         return {"status": "error", "message": "Lead lookup failed"}
 
-    # ✅ Store incoming message
+    # ✅ Store incoming message (Tenant Message)
     store_message_log(db, formatted_number, "incoming", message_body)
 
-    # ✅ If it's a new lead, send an opening message
-    if is_new_lead:
-        first_message = generate_ai_message("opening", lead)
-    else:
-        first_message = generate_ai_message("follow_up", lead)
+    # ✅ Generate AI response (context logic handled inside `generate_ai_message`)
+    context = "opening" if is_new_lead else "follow_up"
+    ai_response = generate_ai_message(db, lead.id, context, lead)
 
     # ✅ Send AI-generated message
-    send_sms(formatted_number, first_message)
+    send_sms(formatted_number, ai_response)
 
-    # ✅ Log AI-generated response
-    store_message_log(db, formatted_number, "outgoing", first_message)
-
-    return {"message": "Reply received and AI response sent", "phone_number": formatted_number, "lead_id": lead.id}
+    return {
+        "message": "Reply received and AI response sent",
+        "phone_number": formatted_number,
+        "lead_id": lead.id
+    }
 
 
 '''

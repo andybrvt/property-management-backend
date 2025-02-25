@@ -23,6 +23,7 @@ class Lead(Base):
     last_contact = Column(DateTime, default=lambda: datetime.now(timezone.utc))  # Correct UTC Handling
     conversation_state = Column(String, default="initial")  # Track where we are in the conversation
     missing_info = Column(ARRAY(String), server_default="{}")
+    move_in_date = Column(DateTime, nullable=True)  # ✅ Added move-in date with time
 
     # Relationships
     messages = relationship("Message", back_populates="lead")

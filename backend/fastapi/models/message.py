@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, ForeignKey, Text, DateTime
+from sqlalchemy import Column, String, ForeignKey, Text, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime, timezone
@@ -18,6 +18,8 @@ class Message(Base):
     twilio_sid = Column(String, nullable=True)  # Twilio message ID
     status = Column(String, default="pending")  # pending, sent, delivered, failed
     sent_at = Column(DateTime, nullable=True, default=lambda: datetime.now(timezone.utc))  # Ensure sent_at is never None
+    is_ai_generated = Column(Boolean, nullable=True, default=False)  # ✅ New field
+
 
     # Relationship to Lead
     lead = relationship("Lead", back_populates="messages")

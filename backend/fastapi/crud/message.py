@@ -24,6 +24,39 @@ def store_message_log(db: Session, phone_number: str, direction: str, message: s
     db.commit()
 
 
+def get_last_messages(db: Session, lead_id: int, limit: int = 3):
+    """
+    Fetches the last 'limit' messages for a given lead, sorted by newest first.
+    Returns a list of messages with role indicators (tenant or AI).
+    """
+    messages = (
+        db.query(Message)
+        .filter(Message.lead_id == lead_id)
+        .order_by(Message.sent_at.desc())  # ✅ FIXED: Use 'sent_at' instead of 'created_at'
+        .limit(limit)
+        .all()
+    )
+
+    return [
+        {"role": "assistant" if msg.is_ai_generated else "tenant", "text": msg.content}
+        for msg in reversed(messages)  # Reverse to maintain conversation order
+    ]
+
+def save_ai_message(db: Session, lead_id: int, message_text: str):
+    """
+    Saves an AI-generated message in the Messages table.
+    """
+    ai_message = Message(
+        lead_id=lead_id,
+        content=message_text,
+        direction="outgoing",
+        is_ai_generated=True,  # ✅ Mark it as AI-generated
+        status="sent"
+    )
+    db.add(ai_message)
+    db.commit()
+    return ai_message
+
 
 # Create a new message from dictionary data (sync)
 def create_message(db: Session, message_data: Dict[str, Any]) -> Message:
