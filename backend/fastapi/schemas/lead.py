@@ -4,8 +4,8 @@ from uuid import UUID
 from datetime import datetime, timezone
 
 class LeadBase(BaseModel):
-    name: str
-    email: EmailStr  # ✅ Ensure valid email format
+    name: Optional[str] = None  # ✅ Now allows NULL values
+    email: Optional[EmailStr] = None  # ✅ Now allows NULL values
     phone: str
     income: Optional[int] = None
     has_pets: bool = False
@@ -26,8 +26,8 @@ class LeadUpdate(BaseModel):  # ✅ Now allows partial updates
 
 class LeadSchema(LeadBase):
     id: UUID
-    created_at: datetime = datetime.now(timezone.utc)  # ✅ Ensure UTC timestamps
-    updated_at: datetime = datetime.now(timezone.utc)
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True  # ✅ Pydantic v2 way to work with SQLAlchemy

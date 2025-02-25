@@ -4,6 +4,21 @@ from fastapi import HTTPException
 from backend.fastapi.models.lead import Lead
 from backend.fastapi.schemas.lead import LeadCreate, LeadUpdate
 
+
+def get_or_create_lead(db: Session, phone_number: str, create_new: bool = True) -> Lead:
+    """Retrieve an existing lead by phone number or create a new one if create_new=True."""
+    lead = db.query(Lead).filter(Lead.phone == phone_number).first()
+    
+    if lead or not create_new:
+        return lead  # ✅ Return lead if exists, or if checking only
+
+    # ✅ If create_new=True and no lead found, create a new one
+    lead = Lead(phone=phone_number, status="new")
+    db.add(lead)
+    db.commit()
+    db.refresh(lead)
+    return lead
+
 # Create a new lead
 def create_lead(db: Session, lead: LeadCreate):
     db_lead = Lead(**lead.model_dump())  # ✅ Fixed .dict() -> .model_dump()

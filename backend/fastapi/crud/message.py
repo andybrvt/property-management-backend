@@ -17,6 +17,14 @@ async def create_message_dict_async(db: Session, message_data: Dict[str, Any]) -
 
 '''
 
+def store_message_log(db: Session, phone_number: str, direction: str, message: str):
+    """Logs a message sent or received into the Messages table."""
+    msg_entry = Message(phone_number=phone_number, direction=direction, content=message)
+    db.add(msg_entry)
+    db.commit()
+
+
+
 # Create a new message from dictionary data (sync)
 def create_message(db: Session, message_data: Dict[str, Any]) -> Message:
     """Create a new message"""
