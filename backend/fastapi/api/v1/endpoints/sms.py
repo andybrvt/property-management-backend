@@ -51,7 +51,7 @@ async def receive_sms(request: Request, db: Session = Depends(get_sync_db)):
 
 
     # ✅ Wait a few seconds to check for more messages before responding
-    cooldown_time = 5  # ⏳ Adjust the wait time if needed
+    cooldown_time = 10  # ⏳ Adjust the wait time if needed
     await asyncio.sleep(cooldown_time)
 
     # ✅ Check for the **absolute newest message** in the entire database (not just this session)

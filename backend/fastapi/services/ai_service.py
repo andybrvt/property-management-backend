@@ -25,55 +25,65 @@ def get_fallback_response(context_type: str) -> str:
 def generate_ai_message(db: Session, lead_id: int, context: str, lead=None):
     """
     Generate a short, SMS-friendly AI response based on full session context.
-    - AI first answers tenant's questions.
-    - Then, AI asks a light follow-up question based on missing lead data.
-    - Ensures AI does not repeat previous questions.
+    - AI first answers the **last 2 tenant messages.**
+    - AI references broader conversation history **excluding the current session.**
+    - AI asks **only one** missing detail question.
     """
 
-    # 🔹 1️⃣ Get full session message history for better context
-    conversation_history = get_last_messages(db, lead_id, limit=10)  
+    # 🔹 1️⃣ Get only the last 2 messages for immediate response focus
+    last_two_messages = get_last_messages(db, lead_id, limit=2)  
 
-    # ✅ LOGGING: Print last 5 messages to debug
-    logging.info(f"🗂️ Last 5 Messages for Lead {lead_id}: {conversation_history}")
+    # ✅ LOGGING: Print last 2 messages to debug
+    logging.info(f"🗂️ Last 2 Messages for Lead {lead_id}: {last_two_messages}")
 
-    # 🔹 2️⃣ Structure conversation history for AI
-    tenant_messages = []
-    ai_messages = []
-    for msg in conversation_history:
-        if msg["role"] == "tenant":
-            tenant_messages.append(msg["text"])
-        else:
-            ai_messages.append(msg["text"])
+    # 🔹 2️⃣ Fetch broader conversation history (excluding the last 2 messages)
+    conversation_history = get_last_messages(db, lead_id, limit=10)  # Get a broader history
+    conversation_history = [msg for msg in conversation_history if msg not in last_two_messages]  # Exclude last 2 messages
 
-    # 🔹 3️⃣ Build AI prompt with structured context
+    # ✅ LOGGING: Print conversation history excluding last 2 messages
+    logging.info(f"📜 Conversation History (Excluding Last 2) for Lead {lead_id}: {conversation_history}")
+
+    # 🔹 3️⃣ Structure messages for AI
+    recent_tenant_messages = [msg["text"] for msg in last_two_messages if msg["role"] == "tenant"]
+    past_tenant_messages = [msg["text"] for msg in conversation_history if msg["role"] == "tenant"]
+    past_ai_messages = [msg["text"] for msg in conversation_history if msg["role"] == "assistant"]
+
+    # 🔹 4️⃣ Build AI prompt with structured context
     prompt = """
-    You are a friendly, professional leasing assistant handling tenant inquiries via SMS.
-    Your response **MUST**:
-    - **First, answer all tenant questions directly** before asking anything.
-    - **Then, ask one follow-up question** based on what information is missing.
-    - **Avoid repeating** information already given.
-    - Keep it short (under 160 characters) and natural.
-    """
+You are a friendly, professional leasing assistant handling tenant inquiries via SMS.
 
-    if tenant_messages:
-        prompt += "\n\n📩 **Tenant Messages:**\n" + "\n".join(f"- {msg}" for msg in tenant_messages)
-    else:
-        prompt += "\n\n📩 **No prior tenant messages.**"
+### 📌 Response Rules:
+1️⃣ **Prioritize answering the last 2 tenant messages first.**  
+2️⃣ **Reference past history (excluding these 2) to avoid repetition.**  
+3️⃣ **Keep responses under 160 characters and natural.**  
+4️⃣ **Ask only one follow-up question based on missing details.**  
+5️⃣ **If all required info is provided, confirm and thank the tenant.**  
 
-    if ai_messages:
-        prompt += "\n\n🤖 **Your Previous Responses:**\n" + "\n".join(f"- {msg}" for msg in ai_messages)
+### 🔍 Latest 2 Messages (Tenant Priority):
+"""
 
-    # 🔹 4️⃣ Include known lead details
+    if recent_tenant_messages:
+        prompt += "\n".join(f"- {msg}" for msg in recent_tenant_messages)
+
+    prompt += "\n\n### 🕰️ Previous Conversation History (For Context, Do Not Repeat):"
+    
+    if past_tenant_messages:
+        prompt += "\n📩 **Past Tenant Messages:**\n" + "\n".join(f"- {msg}" for msg in past_tenant_messages)
+
+    if past_ai_messages:
+        prompt += "\n🤖 **Past AI Responses:**\n" + "\n".join(f"- {msg}" for msg in past_ai_messages)
+
+    # 🔹 5️⃣ Include known lead details
     prompt += "\n\n📌 **Lead Details:**\n"
     prompt += f"- Name: {lead.name if lead and lead.name else 'Unknown'}\n"
     prompt += f"- Move-in Date: {lead.move_in_date.strftime('%Y-%m-%d %I:%M %p') if lead and lead.move_in_date else 'Not provided'}\n"
     prompt += f"- Income: {lead.income if lead and lead.income else 'Not provided'}\n"
     prompt += f"- Pets: {'Yes' if lead and lead.has_pets else 'Not provided'}\n"
 
-    # 🔹 5️⃣ Log the Final Prompt Before Sending to GPT
+    # 🔹 6️⃣ Log the Final Prompt Before Sending to GPT
     logging.info(f"📜 Final Prompt Sent to GPT:\n{prompt}")
 
-    # 🔹 6️⃣ Send the Prompt to GPT
+    # 🔹 7️⃣ Send the Prompt to GPT
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -82,11 +92,13 @@ def generate_ai_message(db: Session, lead_id: int, context: str, lead=None):
         )
         ai_message = response.choices[0].message.content.strip()
 
-        # 🔹 7️⃣ Save AI response to Messages table
+        # 🔹 8️⃣ Save AI response to Messages table
         save_ai_message(db, lead_id, ai_message)  
 
         return ai_message  
 
     except Exception as e:
         logging.error(f"❌ OpenAI Error: {e}")  
-        return get_fallback_response(context)  # ✅ Keep `context` for fallbacks
+        return get_fallback_response(context)  # ✅ Use `context` for fallback
+
+
