@@ -8,18 +8,19 @@ from backend.fastapi.models.message import Message
 import uuid
 
 
-'''
-# Create a new message from dictionary data (async)
-async def create_message_dict_async(db: Session, message_data: Dict[str, Any]) -> Message:
-    """Create a new message asynchronously"""
-    db_message = Message(**message_data)
-    db.add(db_message)
-    db.commit()
-    db.refresh(db_message)
-    return db_message
 
-'''
 
+
+def get_messages_by_session(db: Session, session_id: str):
+    """
+    Retrieves all messages in a given session, ordered by timestamp.
+    """
+    return (
+        db.query(Message)
+        .filter(Message.session_id == session_id)
+        .order_by(Message.sent_at.asc())
+        .all()
+    )
 
 def get_or_create_session(db: Session, lead_id: int, time_window: int = 10):
     """
@@ -71,16 +72,17 @@ def get_last_messages(db: Session, lead_id: int, limit: int = 3):
         for msg in reversed(messages)  # Reverse to maintain conversation order
     ]
 
-def save_ai_message(db: Session, lead_id: int, message_text: str):
+def save_ai_message(db: Session, lead_id: int, message_text: str, session_id: str = None):
     """
-    Saves an AI-generated message in the Messages table.
+    Saves an AI-generated message in the Messages table, now with session tracking.
     """
     ai_message = Message(
         lead_id=lead_id,
         content=message_text,
         direction="outgoing",
         is_ai_generated=True,  # ✅ Mark it as AI-generated
-        status="sent"
+        status="sent",
+        session_id=session_id  # ✅ Store session ID if provided
     )
     db.add(ai_message)
     db.commit()
