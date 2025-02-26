@@ -9,6 +9,7 @@ class MessageBase(BaseModel):
     phone_number: Optional[str] = None  # Ensure phone number is never None
     status: Optional[str] = "pending"
     twilio_sid: Optional[str] = None
+    is_ai_generated: Optional[bool] = False  # ✅ Added this field
 
 class MessageCreate(MessageBase):
     lead_id: Optional[UUID] = None  # Allow lead_id to be missing if not required

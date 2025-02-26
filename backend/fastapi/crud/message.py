@@ -3,6 +3,9 @@ from backend.fastapi.models.message import Message
 from typing import Dict, Any, List
 from uuid import UUID
 from typing import Optional  
+from datetime import datetime, timedelta, timezone
+from backend.fastapi.models.message import Message
+import uuid
 
 
 '''
@@ -17,12 +20,38 @@ async def create_message_dict_async(db: Session, message_data: Dict[str, Any]) -
 
 '''
 
-def store_message_log(db: Session, phone_number: str, direction: str, message: str):
-    """Logs a message sent or received into the Messages table."""
-    msg_entry = Message(phone_number=phone_number, direction=direction, content=message)
+
+def get_or_create_session(db: Session, lead_id: int, time_window: int = 10):
+    """
+    Finds an existing message session within the time window, or creates a new session.
+    """
+    recent_message = (
+        db.query(Message)
+        .filter(Message.lead_id == lead_id)
+        .filter(Message.sent_at >= datetime.now(timezone.utc) - timedelta(seconds=time_window))
+        .order_by(Message.sent_at.desc())
+        .first()
+    )
+
+    if recent_message and recent_message.session_id:
+        return recent_message.session_id  # ✅ Reuse existing session
+    else:
+        return uuid.uuid4()  # ✅ Create new session if none exists
+
+def store_message_log(db: Session, phone_number: str, direction: str, message: str, lead_id: UUID = None, session_id: UUID = None):
+    """Logs a message sent or received into the Messages table with session tracking and lead_id."""
+    
+    msg_entry = Message(
+        phone_number=phone_number,
+        direction=direction,
+        content=message,
+        lead_id=lead_id,  # ✅ Ensure lead_id is stored properly
+        session_id=session_id,  # ✅ Store session ID
+        sent_at=datetime.now(timezone.utc)  # ✅ Ensure timestamp is stored
+    )
+    
     db.add(msg_entry)
     db.commit()
-
 
 def get_last_messages(db: Session, lead_id: int, limit: int = 3):
     """
@@ -77,10 +106,17 @@ def get_messages_for_lead(db: Session, lead_id: UUID, skip: int = 0, limit: int 
     """Get all messages for a lead with pagination"""
     return db.query(Message).filter(Message.lead_id == lead_id).offset(skip).limit(limit).all()
 
-# Get all messages (without lead-specific filtering)
 def get_all_messages(db: Session, skip: int = 0, limit: int = 10) -> List[Message]:
-    """Retrieve all messages with pagination"""
-    return db.query(Message).offset(skip).limit(limit).all()
+    """
+    Retrieve all messages with pagination, ordered from newest to oldest.
+    """
+    return (
+        db.query(Message)
+        .order_by(Message.sent_at.desc())  # ✅ Fetch newest messages first
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 def update_message(db: Session, message_id: UUID, message_data: Dict[str, Any]) -> Optional[Message]:
     """Update an existing message"""
