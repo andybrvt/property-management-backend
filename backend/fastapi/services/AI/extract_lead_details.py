@@ -37,41 +37,63 @@ def extract_lead_details_from_messages(db: Session, lead_id: int, session_id: st
     # 🔹 3️⃣ Get current date for better move-in date interpretation
     current_date = datetime.now().strftime("%Y-%m-%d")
 
-    # 🔹 4️⃣ Define optimized AI prompt
     extraction_prompt = f"""
-You are an AI assistant that extracts **subtle but important details** from a tenant's conversation.
+You are an AI assistant that extracts **only explicitly mentioned details** from a tenant's conversation.
 
 ### 📅 Today's Date: {current_date}
 
-### 🎯 Extract the following details from the conversation:
+### 🎯 Extract the following details ONLY if they are **explicitly stated**:
 - **name**: The tenant's full name (if mentioned).
-- **move_in_date**: The exact expected move-in date (format: YYYY-MM-DD). If the tenant says "2 months from now," calculate the correct date from today.
-- **income**: Monthly income as an integer (e.g., 4500).
-- **has_pets**: Boolean (true/false) if the tenant has pets (e.g., "I have a dog" → true).
-- **rented_before**: Boolean (true/false) if the tenant has rented before.
+- **move_in_date**: The exact expected move-in date (format: YYYY-MM-DD). If the tenant says "2 months from now," calculate the correct date.
+- **income**: Any number (e.g., 2k, 2000, 2500/mo) should be considered monthly income.
+- **has_pets**: Boolean (true/false) ONLY IF the tenant explicitly mentions having or not having pets.
+- **rented_before**: Boolean (true/false) ONLY IF the tenant explicitly states they have rented before.
 - **property_interest**: The type of property they are interested in (e.g., "Studio", "2-Bedroom").
 - **email**: The tenant's email if provided.
 
-### 📌 IMPORTANT INSTRUCTIONS:
-- Detect **indirect or implied information** (e.g., "I have a dog" → `has_pets: true`).
-- **Move-in Date:** If the tenant provides a relative date ("in 2 months"), convert it to a proper **YYYY-MM-DD** date.
-- **Pets:** If the tenant asks about pets or mentions an animal, set **`has_pets: true`**.
-- Ensure JSON output follows this exact format:
+### ⚠️ IMPORTANT INSTRUCTIONS:
+1️⃣ **Extract ONLY explicitly mentioned details.** If the tenant does not mention an item, **DO NOT include it in the JSON output**.  
+2️⃣ **DO NOT make assumptions or infer missing information.**  
+3️⃣ **If a number is present (e.g., 2k, 2000, $2500), treat it as monthly income unless stated otherwise.**  
+4️⃣ **If a detail is not found in the conversation, completely omit it from the JSON output.**  
+5️⃣ **Return only a valid JSON object with no extra text, explanations, or formatting issues.**  
+
+---
+
+### Example Conversations & Expected Outputs:
+
+#### Example 1:
+**Tenant Message:**  
+"I want a 2-bedroom, planning to move in two months. I make 2k per month."
+
+✅ **Expected JSON Output:**  
 {{
-    "name": "John Doe",
-    "move_in_date": "2024-03-15",
-    "income": 5000,
-    "has_pets": true,
-    "rented_before": false,
-    "property_interest": "2-Bedroom",
-    "email": "johndoe@email.com"
+    "move_in_date": "2024-04-27",
+    "income": 2000,
+    "property_interest": "2-Bedroom"
 }}
+
+---
+
+#### Example 2:
+**Tenant Message:**  
+"I have a dog, and I’ve rented before. My income is $3500."
+
+✅ **Expected JSON Output:**  
+{{
+    "income": 3500,
+    "has_pets": true,
+    "rented_before": true
+}}
+
+---
 
 ### 📝 Tenant Conversation:
 {conversation_text}
 
-Return **only a valid JSON object**. Do NOT include explanations or extra text.
+Return **only a valid JSON object** with the details explicitly mentioned.
 """
+
 
     # ✅ LOGGING: Log full AI prompt
     logging.info(f"📜 AI Extraction Prompt for Lead {lead_id}:\n{extraction_prompt}")
