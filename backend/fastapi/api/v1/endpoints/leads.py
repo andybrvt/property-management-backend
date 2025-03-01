@@ -33,7 +33,8 @@ def start_lead_conversation(phone_number: str, db: Session = Depends(get_sync_db
     lead = get_or_create_lead(db, formatted_number, create_new=True)
 
     # ✅ Generate AI-powered opening message
-    first_message = generate_ai_message("opening", lead)
+    #first_message = generate_ai_message("opening", lead)
+    first_message = "Hey, thank you for reaching out. We are from xx and it seem like you were interested in one of our properites?"
     
     # Send SMS
     result = send_sms(formatted_number, first_message)

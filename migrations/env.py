@@ -8,7 +8,9 @@ from alembic import context
 from dotenv import load_dotenv
 load_dotenv()  # This loads environment variables from the .env file
 
-
+from backend.fastapi.models.employment_history import EmploymentHistory
+from backend.fastapi.models.rental_history import RentalHistory
+from backend.fastapi.models.property_interest import PropertyInterest
 from backend.fastapi.models.user import User
 from backend.fastapi.models.property import Property
 from backend.fastapi.dependencies.database import Base

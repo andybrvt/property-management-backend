@@ -3,7 +3,7 @@ from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from backend.fastapi.dependencies.database import Base
-
+from backend.fastapi.models.property_interest import PropertyInterest
 
 
 class Property(Base):
@@ -25,6 +25,8 @@ class Property(Base):
 
     # Relationships
     owner = relationship("User", back_populates="properties")  # ✅ Link to User (property owner)
+    interested_leads = relationship("PropertyInterest", back_populates="property", cascade="all, delete-orphan")
+
 
     def __repr__(self):
         return f"<Property(id={self.id}, address={self.address}, status={self.status})>"
