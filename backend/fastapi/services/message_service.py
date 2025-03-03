@@ -1,64 +1,101 @@
 # services/message_service.py
 
 from sqlalchemy.orm import Session
-from backend.fastapi.crud.message import create_message, get_message, get_messages_for_lead, get_all_messages, update_message, delete_message
+from backend.fastapi.crud.message import (
+    create_message, get_message, get_messages_for_lead,
+    get_all_messages, update_message, delete_message, get_messages_by_session
+)
 from typing import List, Dict
 from uuid import UUID
 from backend.fastapi.models.message import Message  # SQLAlchemy model
 from backend.fastapi.schemas import MessageSchema  # Pydantic schema
 from typing import Optional  
 from fastapi import HTTPException
+import logging
+from datetime import datetime, timezone, timedelta
+import uuid
 
+def fetch_messages_by_session(db: Session, session_id: str):
+    """
+    Fetches all messages for a given session.
+    Ensures AI services only call this function instead of accessing CRUD directly.
+    """
+    return get_messages_by_session(db, session_id)  # ✅ Calls the raw CRUD function
 
+def save_ai_message(db: Session, lead_id: int, message_text: str, session_id: str = None):
+    """
+    Saves an AI-generated message and ensures session tracking.
+    """
+    session_id = session_id or get_or_create_session(db, lead_id)  # ✅ Generate session ID if not provided
 
-class MessageService:
-    def __init__(self, db: Session):
-        self.db = db
+    message_data = {
+        "lead_id": lead_id,
+        "content": message_text,
+        "direction": "outgoing",
+        "is_ai_generated": True,
+        "status": "sent",
+        "session_id": session_id,
+    }
 
-    def create_message(self, message_data: Dict) -> MessageSchema:
-        """Create a new message"""
-        db_message = create_message(self.db, message_data)  # Get SQLAlchemy model
-        return MessageSchema.model_validate(db_message)  # Convert SQLAlchemy model to Pydantic model before returning
+    return create_message(db, message_data)  # ✅ Uses `create_message()` to store message
 
-    '''
-    async def create_message_async(self, message_data: Dict) -> MessageSchema:
-        """Asynchronously create a new message"""
-        db_message = await (self.db, message_data)  # Get SQLAlchemy model
-        print('error here')
-        return MessageSchema.from_orm(db_message)  # Convert SQLAlchemy model to Pydantic model
-
-    '''
+def store_message_log(db: Session, phone_number: str, direction: str, message: str, lead_id: UUID = None, session_id: UUID = None):
+    """Logs a message sent or received into the Messages table with session tracking and lead_id."""
     
-    def get_messages(self, skip: int, limit: int) -> List[MessageSchema]:
-        """Retrieve messages with pagination"""
-        db_messages = get_messages_for_lead(self.db, skip, limit)  # List of SQLAlchemy models
-        return [MessageSchema.model_validate(message) for message in db_messages]  # Convert each to Pydantic model
-
-    def get_all_messages(self, skip: int, limit: int) -> List[MessageSchema]:
-        """Retrieve all messages with pagination"""
-        db_messages = get_all_messages(self.db, skip, limit)  # List of SQLAlchemy models
-        return [MessageSchema.model_validate(message) for message in db_messages]  # Convert each to Pydantic model
+    msg_entry = Message(
+        phone_number=phone_number,
+        direction=direction,
+        content=message,
+        lead_id=lead_id,  # ✅ Ensure lead_id is stored properly
+        session_id=session_id,  # ✅ Store session ID
+        sent_at=datetime.now(timezone.utc)  # ✅ Ensure timestamp is stored
+    )
     
-    def get_message(self, message_id: UUID) -> Optional[MessageSchema]:
-        """Retrieve a single message by ID"""
-        db_message = get_message(self.db, message_id)  # Fetch message from DB
-        if db_message:
-            return MessageSchema.model_validate(db_message)  # Convert to Pydantic schema
-        return None  # Explicitly return None if message not found
+    db.add(msg_entry)
+    db.commit()
 
-    def update_message(self, message_id: UUID, message_data: Dict[str, any]) -> Optional[MessageSchema]:
-        """Update an existing message"""
-        db_message = update_message(self.db, message_id, message_data)  # Get updated SQLAlchemy model
-        if db_message:
-            return MessageSchema.model_validate(db_message)  # Convert to Pydantic schema
-        return None  # Return None if the message was not found
-    
+def get_or_create_session(db: Session, lead_id: int, time_window: int = 10):
+    """
+    Finds an existing message session within the time window, or creates a new session.
+    """
+    recent_message = (
+        db.query(Message)
+        .filter(Message.lead_id == lead_id)
+        .filter(Message.sent_at >= datetime.now(timezone.utc) - timedelta(seconds=time_window))
+        .order_by(Message.sent_at.desc())
+        .first()
+    )
 
-    def delete_message(self, message_id: UUID) -> MessageSchema:
-        """Delete a message by ID"""
-        db_message = delete_message(self.db, message_id)  # Get SQLAlchemy model
-        
-        if db_message is None:  # ✅ If message isn't found, raise 404
-            raise HTTPException(status_code=404, detail="Message not found")
+    if recent_message and recent_message.session_id:
+        return recent_message.session_id  # ✅ Reuse existing session
+    else:
+        return uuid.uuid4()  # ✅ Create new session if none exists
 
-        return MessageSchema.model_validate(db_message)  # ✅ Only validate if a message exists
+def get_last_messages(db: Session, lead_id: int, limit: int = 3):
+    """
+    Fetches the last 'limit' messages for a given lead, sorted by newest first.
+    Used for AI conversation context.
+    """
+    messages = get_messages_for_lead(db, lead_id, limit=limit)  # ✅ Now correctly ordered!
+
+    return [
+        {"role": "assistant" if msg.is_ai_generated else "tenant", "text": msg.content}
+        for msg in reversed(messages)  # ✅ Reverse to maintain correct conversation order
+    ]
+
+def get_conversation_context(
+    db: Session,
+    lead_id: int,
+    session_id: str,
+    limit: int = 10
+) -> tuple[list[str], list[str], list[str]]:
+    latest_messages = fetch_messages_by_session(db, session_id)
+    latest_tenant_messages = [msg.content for msg in latest_messages]
+
+    session_messages = get_last_messages(db, lead_id, limit=limit)
+    session_messages = [msg for msg in session_messages if msg["text"] not in latest_tenant_messages]
+
+    tenant_messages = [msg["text"] for msg in session_messages if msg["role"] == "tenant"]
+    ai_messages = [msg["text"] for msg in session_messages if msg["role"] == "assistant"]
+
+    return latest_tenant_messages, tenant_messages, ai_messages

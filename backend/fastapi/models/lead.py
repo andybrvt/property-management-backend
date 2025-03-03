@@ -24,7 +24,9 @@ class Lead(Base):
 
     # Lead Source
     source = Column(String, nullable=True)  # 'zillow', 'sms', 'web_form'
-    status = Column(String, default="new")  # new, qualified, unqualified
+    status = Column(String, default="new")  # new, meeting_scheduled, 
+    # Lead Status Progression
+    # "new" → "meeting_scheduled" → "interested_after_showing" → "application_submitted" → "under_review" → "approved_pending_lease" → "lease_signed" → "moved_in" → ("unqualified" if lead fails)
     move_in_date = Column(DateTime, nullable=True)  # ✅ Added move-in date with time
 
 

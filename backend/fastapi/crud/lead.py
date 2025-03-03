@@ -12,54 +12,26 @@ logger = logging.getLogger(__name__)
 
 
 def get_lead_by_phone(db: Session, phone_number: str) -> Lead:
-    """Retrieve a lead by phone number with debugging."""
-    logger.info(f"Looking for lead with phone: {phone_number}")
+    """Retrieve a lead by phone number (low-level DB query)."""
+    return db.query(Lead).filter(Lead.phone == phone_number).first()
 
-    lead = db.query(Lead).filter(Lead.phone == phone_number).first()
-
-    if not lead:
-        logger.error(f"❌ No lead found for phone {phone_number}")
-        raise HTTPException(status_code=404, detail=f"Lead not found for phone: {phone_number}")
-
-    logger.info(f"✅ Found lead: {lead.id} for phone {phone_number}")
-    return lead
-
-def get_or_create_lead(db: Session, phone_number: str, create_new: bool = True) -> Lead:
-    """Retrieve an existing lead by phone number or create a new one if create_new=True."""
     
-    # ✅ Check if lead already exists
-    lead = db.query(Lead).filter(Lead.phone == phone_number).first()
-    
-    if lead:
-        logger.info(f"✅ Lead found: {lead.id} for phone {phone_number}")
-        return lead  # ✅ Return lead if found
-
-    if not create_new:
-        logger.info(f"🔍 Lead lookup only, not creating new lead for {phone_number}")
-        return None  # ✅ Return None if we're not allowed to create a new lead
-
-    # ✅ Create a new lead if none exists
+def create_lead(db: Session, phone_number: str, **kwargs) -> Lead:
+    """Creates a new lead in the database with optional extra fields."""
     try:
-        lead = Lead(phone=phone_number, status="new")
-        db.add(lead)
+        lead_data = {"phone": phone_number, "status": "new"}
+        lead_data.update(kwargs)  # ✅ Add extra fields dynamically
+
+        db_lead = Lead(**lead_data)  # ✅ Uses only fields that exist in the Lead model
+        db.add(db_lead)
         db.commit()
-        db.refresh(lead)
-        logger.info(f"🎉 New lead created: {lead.id} for phone {phone_number}")
-        return lead
+        db.refresh(db_lead)
+        return db_lead  # ✅ Return the created lead
 
     except Exception as e:
-        logger.error(f"❌ Error creating lead for {phone_number}: {e}")
-        db.rollback()  # ✅ Ensure we roll back if anything goes wrong
-        raise e  # ✅ Re-raise the error to handle it upstream
-    
-    
-# Create a new lead
-def create_lead(db: Session, lead: LeadCreate):
-    db_lead = Lead(**lead.model_dump())  # ✅ Fixed .dict() -> .model_dump()
-    db.add(db_lead)
-    db.commit()
-    db.refresh(db_lead)
-    return db_lead
+        db.rollback()  # ✅ Rollback if anything goes wrong
+        raise e  # ✅ Re-raise the error to be handled in `lead_service.py`
+
 
 # Get a lead by ID
 def get_lead(db: Session, lead_id: UUID):

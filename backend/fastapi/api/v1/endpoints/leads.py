@@ -6,8 +6,8 @@ from backend.fastapi.crud import lead as lead_crud
 from backend.fastapi.schemas.lead import LeadCreate, LeadSchema, LeadUpdate  # ✅ Fixed import
 from typing import List
 from backend.fastapi.utils.phone_utils import validate_phone
-from backend.fastapi.crud.lead import get_or_create_lead
-from backend.fastapi.crud.message import store_message_log
+from backend.fastapi.services.lead_service import get_or_create_lead
+from backend.fastapi.services.message_service import store_message_log
 from backend.fastapi.services.sms_service import send_sms, format_phone_number
 from backend.fastapi.crud.lead import delete_lead
 from backend.fastapi.services.ai_service import generate_ai_message
