@@ -13,7 +13,7 @@ from backend.fastapi.crud.lead import delete_lead
 from backend.fastapi.services.ai_service import generate_ai_message
 from pydantic import BaseModel
 from backend.fastapi.services.ai.ai_prompts import get_lead_extraction_prompt
-from backend.fastapi.services.ai.openai_client import call_openai
+from backend.fastapi.services.ai.openai_client import call_openai_extraction
 from backend.fastapi.services.ai.lead_info_checker import get_missing_lead_info
 import json
 import logging
@@ -95,7 +95,7 @@ def test_full_extraction(request: LeadTestExtractionRequest):
 
     logger.info(f"📜 Extraction Prompt:\n{extraction_prompt}")
 
-    extracted_data_raw = call_openai(extraction_prompt, max_tokens=300)
+    extracted_data_raw = call_openai_extraction(extraction_prompt, max_tokens=300)
 
     logger.info(f"🔍 Raw GPT Output:\n{extracted_data_raw}")
 

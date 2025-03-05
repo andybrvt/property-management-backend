@@ -79,23 +79,15 @@ def get_last_messages(db: Session, lead_id: int, limit: int = 3):
     messages = get_messages_for_lead(db, lead_id, limit=limit)  # ✅ Now correctly ordered!
 
     return [
-        {"role": "assistant" if msg.is_ai_generated else "tenant", "text": msg.content}
-        for msg in reversed(messages)  # ✅ Reverse to maintain correct conversation order
+        {"role": "assistant" if msg.is_ai_generated else "user", "content": msg.content}
+        for msg in reversed(messages)
+        if msg.content  # ✅ Skip if content is None or empty
     ]
 
 def get_conversation_context(
     db: Session,
     lead_id: int,
-    session_id: str,
     limit: int = 10
-) -> tuple[list[str], list[str], list[str]]:
-    latest_messages = fetch_messages_by_session(db, session_id)
-    latest_tenant_messages = [msg.content for msg in latest_messages]
-
-    session_messages = get_last_messages(db, lead_id, limit=limit)
-    session_messages = [msg for msg in session_messages if msg["text"] not in latest_tenant_messages]
-
-    tenant_messages = [msg["text"] for msg in session_messages if msg["role"] == "tenant"]
-    ai_messages = [msg["text"] for msg in session_messages if msg["role"] == "assistant"]
-
-    return latest_tenant_messages, tenant_messages, ai_messages
+) -> list[dict]:
+    # Get the last N messages for the lead
+    return get_last_messages(db, lead_id, limit=limit)
