@@ -11,8 +11,8 @@ from backend.fastapi.services.ai.ai_prompts import get_lead_extraction_prompt
 from backend.fastapi.services.ai.openai_client import call_openai
 from backend.fastapi.utils.parsers import parse_extracted_lead_info
 from backend.fastapi.services.lead.update_lead_mod import update_lead_with_extracted_info
-
-
+from backend.fastapi.crud.lead import get_lead
+from backend.fastapi.services.lead_service import update_lead_status_based_on_info
 
 def extract_lead_details_from_messages(db: Session, lead_id: int, session_id: str):
     """
@@ -31,8 +31,12 @@ def extract_lead_details_from_messages(db: Session, lead_id: int, session_id: st
     # 🔹 2️⃣ Combine session messages for AI processing
     conversation_text = "\n".join([msg.content for msg in session_messages])
 
+    lead = get_lead(db, lead_id)
+    if not lead:
+        return None
+
      # ✅ Use modular function to generate AI prompt
-    extraction_prompt = get_lead_extraction_prompt(conversation_text)
+    extraction_prompt = get_lead_extraction_prompt(conversation_text, current_status=lead.status)
 
     # ✅ LOGGING: Debugging full conversation
     logging.info(f"📝 Extracting details from conversation for Lead {lead_id}:\n{conversation_text}")
@@ -58,6 +62,8 @@ def extract_lead_details_from_messages(db: Session, lead_id: int, session_id: st
 
     updated = update_lead_with_extracted_info(db, lead, extracted_info)  # Track if we make updates
 
+
     if updated:
+        update_lead_status_based_on_info(lead)  # ✅ Run status updater here
         db.commit()  # Save updates to database
         logging.info(f"✅ Updated Lead {lead_id} with extracted details")

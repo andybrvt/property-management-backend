@@ -2,7 +2,8 @@ from sqlalchemy.orm import Session
 from backend.fastapi.crud.lead import get_lead_by_phone, create_lead
 from backend.fastapi.services.sms_service import format_phone_number
 import logging
-
+from backend.fastapi.constants.lead_statuses import LEAD_STATUSES
+from backend.fastapi.models.lead import Lead
 # ✅ Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -52,3 +53,46 @@ def get_or_create_lead(db: Session, phone_number: str, **extra_fields):
     except Exception as e:
         logger.error(f"❌ Error creating lead for {formatted_number}: {e}")
         return None, "Error creating lead"
+
+
+def update_lead_status(db: Session, lead: Lead, new_status: str):
+    """Safely updates the lead's status if valid and commits the change."""
+    
+    if new_status not in LEAD_STATUSES:
+        logger.error(f"❌ Invalid status '{new_status}' for Lead {lead.id}")
+        return False  # Optionally raise an error instead
+
+    logger.info(f"🔄 Updating Lead {lead.id} status: {lead.status} → {new_status}")
+    
+    lead.status = new_status
+    db.commit()
+    db.refresh(lead)
+    return True
+
+# ✅ Define the required fields for each status (stacked correctly)
+STATUS_RULES = [
+    ("showing_scheduled", ["name", "property_interest", "email", "id_verified", "scheduled_showing_date"]),
+    ("id_verified", ["name", "property_interest", "email", "id_verified"]),
+    ("id_verification_requested", ["name", "property_interest", "email"]),
+    ("interested_in_showing", ["name", "property_interest"]),
+    ("new", []),  # Fallback
+]
+
+# ✅ Special checks for non-standard fields
+SPECIAL_FIELD_CHECKS = {
+    "property_interest": lambda lead: len(lead.property_interest) > 0,
+}
+
+# ✅ Universal field checker
+def check_field(lead, field):
+    if field in SPECIAL_FIELD_CHECKS:
+        return SPECIAL_FIELD_CHECKS[field](lead)
+    return getattr(lead, field) not in (None, "", False)
+
+# ✅ Status updater function
+def update_lead_status_based_on_info(lead: Lead):
+    for status, required_fields in STATUS_RULES:
+        if all(check_field(lead, field) for field in required_fields):
+            lead.status = status
+            break
+

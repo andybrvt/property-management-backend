@@ -39,6 +39,7 @@ async def receive_sms(request: Request, db: Session = Depends(get_sync_db)):
         return {"status": "error", "message": error}
 
     is_new_lead = lead.status == "new"
+    
     logger.info(f"🆔 Lead found/created: {lead.id} | New Lead: {is_new_lead}")
 
     # ✅ Find or create a message session

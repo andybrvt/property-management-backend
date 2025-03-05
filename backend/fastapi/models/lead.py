@@ -56,6 +56,10 @@ class Lead(Base):
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     last_contact = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    # Verification
+    id_verified = Column(Boolean, default=False)
+    id_verification_date = Column(DateTime, nullable=True)
+
     # archived fields
     property_interest_archived = Column(String, nullable=True)  # Type of property interested in
     has_pets_archived = Column(Boolean, default=False)

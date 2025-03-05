@@ -7,43 +7,59 @@ logger = logging.getLogger(__name__)
 
 def get_missing_lead_info(lead: Lead) -> str:
     """
-    Determines which piece of lead information is missing and returns the appropriate follow-up question.
-    Prioritizes in order: Name > Move-in Date > Income > Pets > Rental History > Property Interest > Email.
-    If all information is collected, sends a final confirmation and booking message.
+    Determines the next follow-up question based on the lead's current status.
     """
 
-    if not lead.name or lead.name.lower() == "unknown":
-        logger.info(f"📌 Missing Info: Name for Lead {lead.id}")
-        return "By the way, what's your name? 😊"
-    
-    if not lead.move_in_date:
-        logger.info(f"📌 Missing Info: Move-in Date for Lead {lead.id}")
-        return "What’s your ideal move-in date? 🗓️"
-    
-    if lead.income is None:  # Allow 0 but not None
-        logger.info(f"📌 Missing Info: Income for Lead {lead.id}")
-        return "Can you share your monthly income range for qualification? 💰"
-    
-    if lead.has_pets is None:
-        logger.info(f"📌 Missing Info: Pets for Lead {lead.id}")
-        return "Do you have any pets? If so, what breed? 🐾"
-    
-    if lead.rented_before is None:
-        logger.info(f"📌 Missing Info: Rental History for Lead {lead.id}")
-        return "Have you rented before, or would this be your first time? 🏡"
+    if lead.status == "new":
+        if not lead.name or lead.name.lower() == "unknown":
+            logger.info(f"📌 Missing Info: Name for Lead {lead.id}")
+            return "Hey! What's your name? 😊"
+        return "Thanks for reaching out! Would you be interested in scheduling a viewing?"
 
-    if not lead.property_interest:
-        logger.info(f"📌 Missing Info: Property Interest for Lead {lead.id}")
-        return "What type of property are you most interested in? A studio, 1-bedroom, or something else? 🏠"
-    
-    if not lead.email:
-        logger.info(f"📌 Missing Info: Email for Lead {lead.id}")
-        return "What’s the best email to reach you at? 📧"
+    if lead.status == "interested_in_showing":
+        if not lead.email:
+            logger.info(f"📌 Missing Info: Email for Lead {lead.id}")
+            return "Sounds good! Can you share your best email? We’ll send you a secure link to verify your ID before scheduling."
+        return "Perfect, we’ll be sending your ID verification link shortly!"
 
-    # ✅ If all required details are collected, send a follow-up message
-    logger.info(f"✅ All required info collected for Lead {lead.id}")
+    if lead.status == "id_verification_requested":
+        return "Just checking in—did you get a chance to upload your ID? Let me know if you need the link again."
 
-    return (
-        "Thanks for providing all your details! We've sent you an email with all the info you need. "
-        "📅 You can now book a showing at your convenience here: **https://calendly.com/fake-link/30min**"
-    )
+    if lead.status == "id_verified":
+        return "You're all set! Ready to book a showing? Here's my calendar link: **https://calendly.com/fake-link/30min**"
+
+    if lead.status == "showing_scheduled":
+        return "Looking forward to your showing! Let me know if any questions come up before then."
+
+    if lead.status == "showing_completed":
+        return "Hope you enjoyed the tour! Would you like the application link to move forward?"
+
+    if lead.status == "application_sent":
+        return "Just a reminder to complete your application when you get a chance!"
+
+    if lead.status == "application_received":
+        return "Thanks for applying! We're reviewing your info and will update you soon."
+
+    if lead.status == "screening_in_progress":
+        return "Your application is being screened—hang tight, we'll update you shortly."
+
+    if lead.status == "approved":
+        return "Congrats! You've been approved. We'll send over the lease shortly."
+
+    if lead.status == "lease_sent":
+        return "Let me know if you have any questions about the lease. We're here to help!"
+
+    if lead.status == "lease_signed":
+        return "Awesome! The next step is completing your payment. We'll send you the link shortly."
+
+    if lead.status == "payment_pending":
+        return "Reminder to complete your payment to secure the property!"
+
+    if lead.status == "moved_in":
+        return "Welcome home! Let us know if you need anything."
+
+    if lead.status == "inactive":
+        return "Hey, just checking in! Are you still interested in moving forward?"
+
+    # Fallback if somehow no status matched
+    return "Thanks for your message! We'll get back to you shortly."

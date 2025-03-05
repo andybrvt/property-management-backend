@@ -1,20 +1,27 @@
 from datetime import datetime
 
-def get_lead_extraction_prompt(conversation_text: str) -> str:
-    """Generates AI prompt for extracting lead details from conversation."""
+def get_lead_extraction_prompt(conversation_text: str, current_status: str = "new") -> str:
     current_date = datetime.now().strftime("%Y-%m-%d")
+
     return f"""
 You are an AI assistant extracting **only explicitly mentioned details** from a tenant's conversation.
 
 ### 📅 Today's Date: {current_date}
+### 🛠️ Current Lead Status: "{current_status}"
 
 ### 🎯 Extracted Details (Only if explicitly stated):
-- **name**, **move_in_date**, **income**, **has_pets**, **rented_before**, **property_interest**, **email**
+- **name**
+- **move_in_date**
+- **income**
+- **has_pets**
+- **rented_before**
+- **property_interest**
+- **email**
 
 ### ⚠️ Rules:
 1️⃣ **Extract only explicitly mentioned details.**  
 2️⃣ **No assumptions.**  
-3️⃣ **Return only valid JSON.**  
+3️⃣ **Always return valid JSON.**  
 
 ### 📝 Tenant Conversation:
 {conversation_text}
