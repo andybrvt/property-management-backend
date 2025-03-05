@@ -14,6 +14,7 @@ from backend.fastapi.services.ai_service import generate_ai_message
 from pydantic import BaseModel
 from backend.fastapi.services.ai.ai_prompts import get_lead_extraction_prompt
 from backend.fastapi.services.ai.openai_client import call_openai
+from backend.fastapi.services.ai.lead_info_checker import get_missing_lead_info
 import json
 import logging
 from backend.fastapi.models.lead import Lead
@@ -31,6 +32,40 @@ class LeadTestExtractionRequest(BaseModel):
 from uuid import uuid4
 from backend.fastapi.models.property_interest import PropertyInterest
 
+# Test response 
+@router.post("/test-missing-info")
+def test_missing_info():
+    """Test missing info checker for a fake lead."""
+
+    # Create fake lead
+    fake_lead = Lead(
+        id=uuid4(),
+        status="interested_in_showing",  # 🟡 Moved to 'interested_in_showing'
+        name="Andy",
+        email=None,                      # 🛑 Missing email
+        property_interest=[],
+    )
+
+    # Add fake property interest to pass the earlier check
+    fake_property_interest = PropertyInterest(
+        id=uuid4(),
+        lead_id=fake_lead.id,
+        property_id=uuid4(),
+        status="interested"
+    )
+    fake_lead.property_interest.append(fake_property_interest)
+
+    question = get_missing_lead_info(fake_lead)
+
+    return {
+        "lead_status": fake_lead.status,
+        "missing_info_question": question
+    }
+
+ 
+    
+
+# Test extraction for lead
 @router.post("/test-full-extraction")
 def test_full_extraction(request: LeadTestExtractionRequest):
     """Test extraction, lead update, and status update from sample conversation text."""
