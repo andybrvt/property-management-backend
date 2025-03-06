@@ -12,6 +12,16 @@ from backend.fastapi.services.message_service import get_conversation_context
 
 # ✅ Load OpenAI API key
 
+# for better headspace as you build this out
+# there are 3 main parts to this service
+# 1️⃣ Extract + Update → 2️⃣ Check Status → 3️⃣ Send message
+# Step 1 = Extraction.
+# Step 2 = Conditions.
+# Step 3 = Actions.
+
+
+
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
@@ -40,18 +50,21 @@ def generate_ai_message(db: Session, lead_id: int, session_id: str, context: str
     5. Send to OpenAI + Save Response
     """
 
-    # 🔹 Extract lead details from conversation
+    # Step 1: Extract details + Update Info 
     extract_lead_details_from_messages(db, lead_id, session_id)
 
-    
+
+    # Step 2: Check Status 
     conversation_history = get_conversation_context(
         db, lead_id,
         limit=15  # ⬅️ Adjust this number as needed
     )
 
     # 🔹 Identify missing lead information
-    missing_info_question = get_missing_lead_info(lead)
+    missing_info_question = get_missing_lead_info(db,lead)
 
+
+    # Step 3: Build AI prompt (send message out)
     messages = build_ai_message_history(
         conversation_history,
         missing_info_question

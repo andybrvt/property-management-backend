@@ -65,6 +65,9 @@ class Lead(Base):
     has_pets_archived = Column(Boolean, default=False)
     rented_before_archived = Column(Boolean, default=False)
 
+    # property interest
+    uncertain_interest = Column(Boolean, default=True)  # True if they seem unsure about a specific property
+    interest_city = Column(String, nullable=True)  # Optional, helps narrow down property suggestions
     
     # Relationships
     messages = relationship("Message", back_populates="lead")

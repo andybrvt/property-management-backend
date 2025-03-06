@@ -6,6 +6,7 @@ from backend.fastapi.models.property import Property
 from typing import List
 import logging
 from backend.fastapi.models.lead import Lead
+from typing import Optional
 
 
 
@@ -69,6 +70,9 @@ def handle_property_interest_from_extraction(
                 lead_id=lead.id,
                 property_id=matched_property.id
             )
+            lead.uncertain_interest = False  # ✅ Mark as certain now that we attached a valid property
+            db.commit()
+            db.refresh(lead)
             logging.info(f"🏠 Attached Property {matched_property.id} ({matched_property.address}) to Lead {lead.id}")
             return True  # Successfully attached
         else:
@@ -77,3 +81,31 @@ def handle_property_interest_from_extraction(
         logging.info(f"❌ No matching property found for address: '{property_address}'")
     
     return False  # No property attached
+
+
+def get_top_properties(db: Session, city: Optional[str] = None, limit: int = 3) -> List[Property]:
+    """
+    Fetch top available properties, optionally filtered by city.
+    """
+    query = db.query(Property).filter(
+        Property.status == "available"
+    )
+    if city:
+        query = query.filter(Property.city.ilike(f"%{city}%"))
+    
+    top_properties = query.limit(limit).all()
+    logging.info(f"🏡 Fetched {len(top_properties)} top properties{' in ' + city if city else ''}.")
+    return top_properties
+
+
+def format_property_list(properties: List[Property]) -> str:
+    """
+    Turn a list of Property objects into a clean, readable string.
+    """
+    if not properties:
+        return "No available properties found at the moment."
+
+    return "\n\n".join(
+        f"🏠 {prop.address} — {prop.num_bedrooms}BR/{prop.num_bathrooms}BA, ${prop.rent_price}/mo"
+        for prop in properties
+    )

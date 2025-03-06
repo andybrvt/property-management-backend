@@ -18,17 +18,21 @@ You are an AI assistant extracting **only explicitly mentioned details** from a 
 ### 🎯 Extracted Details (Only if explicitly stated):
 - **name**
 - **move_in_date**
-- **income**
+- **income** (Capture any mention of income, salary, or budget, even if approximate.)
 - **has_pets**
 - **rented_before**
 - **property_interest**
 - **property_address_interest** (If they mention a specific property address they are interested in. Leave blank if none.)
+- **city_interest** (If they mention a city they are interested in. Leave blank if none.)
 - **email**
+
 
 ### ⚠️ Rules:
 1️⃣ **Extract only explicitly mentioned details.**  
 2️⃣ **No assumptions.**  
 3️⃣ **Always return valid JSON.**  
+4️⃣ Capture budget mentions as "income" if no explicit income is provided.
+
 
 ### 📝 Tenant Conversation:
 {conversation_text}

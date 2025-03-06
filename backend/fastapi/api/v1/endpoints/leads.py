@@ -34,6 +34,34 @@ from uuid import uuid4
 from backend.fastapi.models.property_interest import PropertyInterest
 
 
+@router.post("/test/extract", status_code=200)
+def test_lead_extraction(
+    payload: LeadTestExtractionRequest,
+    db: Session = Depends(get_sync_db)
+):
+    conversation_text = payload.conversation_text
+
+    extraction_prompt = get_lead_extraction_prompt(
+        conversation_text=conversation_text,
+        current_status="new",  # or set dynamically if needed
+        latest_ai_message=None
+    )
+
+    logging.info(f"📝 Extracting details from test conversation:\n{conversation_text}")
+    logging.info(f"📜 Extraction Prompt:\n{extraction_prompt}")
+
+    extracted_data_raw = call_openai_extraction(extraction_prompt, max_tokens=300)
+
+    # ✅ Clean the output
+    try:
+        # Remove code block markdown if present
+        cleaned_json_str = extracted_data_raw.strip().strip("```json").strip("```").strip()
+        extracted_data = json.loads(cleaned_json_str)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON extracted: {e}")
+
+    return {"extracted_data": extracted_data}
+
 @router.delete("/leads/{lead_id}/reset-property-interest", status_code=200)
 def reset_lead_property_interest(
     lead_id: UUID,
@@ -51,34 +79,40 @@ def reset_lead_property_interest(
         PropertyInterest.lead_id == lead_id
     ).delete()
 
+    # Reset uncertain_interest to True
+    lead.uncertain_interest = True
+    lead.status = "new"
     db.commit()
+    db.refresh(lead)
 
     return {"message": f"✅ Reset {deleted_count} property interests for Lead {lead_id}."}
 
 # Test response 
 @router.post("/test-missing-info")
-def test_missing_info():
+def test_missing_info(db: Session = Depends(get_sync_db)):
     """Test missing info checker for a fake lead."""
 
-    # Create fake lead
+    # Create fake lead that should trigger the property suggestion
     fake_lead = Lead(
         id=uuid4(),
-        status="interested_in_showing",  # 🟡 Moved to 'interested_in_showing'
+        status="new",
         name="Andy",
-        email=None,                      # 🛑 Missing email
-        property_interest=[],
+        email=None,
+        property_interest=[],           # 🛑 No property interests
+        uncertain_interest=True,        # 🟡 Make sure this is set
+        interest_city="Phoenix"         # Optional: to filter top properties
     )
 
-    # Add fake property interest to pass the earlier check
-    fake_property_interest = PropertyInterest(
-        id=uuid4(),
-        lead_id=fake_lead.id,
-        property_id=uuid4(),
-        status="interested"
-    )
-    fake_lead.property_interest.append(fake_property_interest)
+    # ⛔️ Comment out or remove fake property interest
+    # fake_property_interest = PropertyInterest(
+    #     id=uuid4(),
+    #     lead_id=fake_lead.id,
+    #     property_id=uuid4(),
+    #     status="interested"
+    # )
+    # fake_lead.property_interest.append(fake_property_interest)
 
-    question = get_missing_lead_info(fake_lead)
+    question = get_missing_lead_info(db, fake_lead)
 
     return {
         "lead_status": fake_lead.status,

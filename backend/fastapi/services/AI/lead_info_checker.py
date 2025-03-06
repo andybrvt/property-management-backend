@@ -1,5 +1,7 @@
 import logging
 from backend.fastapi.models.lead import Lead
+from backend.fastapi.services.property_service import get_top_properties, format_property_list
+from sqlalchemy.orm import Session
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,7 +22,7 @@ MISSING_INFO_QUESTIONS = {
     "scheduled_showing_date": "Great! When would you like to schedule your showing? 📅",
 }
 
-def get_missing_lead_info(lead: Lead) -> str:
+def get_missing_lead_info(db: Session, lead: Lead) -> str:
     """
     Dynamically checks what's missing for the current status and asks for it.
     """
@@ -30,7 +32,13 @@ def get_missing_lead_info(lead: Lead) -> str:
     for field in required_fields:
         value = getattr(lead, field, None)
         if field == "property_interest":
-            if not lead.property_interest or len(lead.property_interest) == 0:
+            if lead.uncertain_interest:
+                logger.info(f"🏡 Lead {lead.id} seems unsure. Suggesting properties.")
+                top_properties = get_top_properties(db, city=lead.interest_city)
+                property_list_text = format_property_list(top_properties)
+
+                return f"""No worries if you're unsure! Here are a few available properties:\n\n{property_list_text}\n\nLet me know if any of these sound good! 🏡"""
+            else:
                 logger.info(f"📌 Missing Info: {field} for Lead {lead.id}")
                 return MISSING_INFO_QUESTIONS[field]
         elif value in (None, "", False):
