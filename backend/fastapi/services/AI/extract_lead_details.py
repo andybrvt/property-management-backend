@@ -13,6 +13,9 @@ from backend.fastapi.utils.parsers import parse_extracted_lead_info
 from backend.fastapi.services.lead.update_lead_mod import update_lead_with_extracted_info
 from backend.fastapi.crud.lead import get_lead
 from backend.fastapi.services.lead_service import update_lead_status_based_on_info
+from backend.fastapi.services.property_service import handle_property_interest_from_extraction
+
+
 
 def extract_lead_details_from_messages(db: Session, lead_id: int, session_id: str):
     """
@@ -72,6 +75,10 @@ def extract_lead_details_from_messages(db: Session, lead_id: int, session_id: st
     extracted_info = parse_extracted_lead_info(cleaned_data)
     if not extracted_info:
         return
+    
+
+    property_address = extracted_info.get("property_address_interest")
+    handle_property_interest_from_extraction(db, lead, property_address)
 
     # Step 8: Refresh the lead object to ensure it's the latest version
     lead = db.query(Lead).filter(Lead.id == lead_id).first()

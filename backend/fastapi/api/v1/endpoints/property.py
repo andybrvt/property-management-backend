@@ -5,8 +5,25 @@ from typing import List
 from backend.fastapi.dependencies.database import get_sync_db
 from backend.fastapi.crud import property as property_crud
 from backend.fastapi.schemas.property import PropertyCreate, PropertyResponse, PropertyUpdate
+from backend.fastapi.services.property_service import attach_property_to_lead
+from backend.fastapi.services import property_service  # ✅ make sure this import exists
+
 
 router = APIRouter()
+
+# ✅ Attach a property to a lead → POST /api/v1/properties/{property_id}/attach-to-lead/{lead_id}
+@router.post("/{property_id}/attach-to-lead/{lead_id}", status_code=201)
+def attach_property_to_lead(
+    property_id: UUID,
+    lead_id: UUID,
+    db: Session = Depends(get_sync_db)
+):
+    """Attach a property to a lead as an interested property."""
+    return property_service.attach_property_to_lead(
+        db=db,
+        lead_id=lead_id,
+        property_id=property_id
+    )
 
 # ✅ Create a new property → POST /api/v1/properties/
 @router.post("/", response_model=PropertyResponse, status_code=201)

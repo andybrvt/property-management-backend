@@ -16,6 +16,7 @@ You are an AI assistant extracting **only explicitly mentioned details** from a 
 - **has_pets**
 - **rented_before**
 - **property_interest**
+- **property_address_interest** (If they mention a specific property address they are interested in. Leave blank if none.)
 - **email**
 
 ### ⚠️ Rules:

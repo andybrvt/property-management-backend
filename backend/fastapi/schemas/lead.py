@@ -2,6 +2,9 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 from uuid import UUID
 from datetime import datetime, timezone
+from .property_interest import PropertyInterestResponse  # ✅ import the response schema
+from typing import List
+
 
 class LeadBase(BaseModel):
     name: Optional[str] = None
@@ -30,6 +33,8 @@ class LeadSchema(LeadBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
+    property_interest: List[PropertyInterestResponse] = []  # ✅ add this
+
 
     class Config:
         from_attributes = True  

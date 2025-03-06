@@ -18,6 +18,7 @@ from backend.fastapi.services.ai.lead_info_checker import get_missing_lead_info
 import json
 import logging
 from backend.fastapi.models.lead import Lead
+from backend.fastapi.services.property_service import handle_property_interest_from_extraction
 
 router = APIRouter()
 
@@ -67,31 +68,22 @@ def test_missing_info():
 
 # Test extraction for lead
 @router.post("/test-full-extraction")
-def test_full_extraction(request: LeadTestExtractionRequest):
-    """Test extraction, lead update, and status update from sample conversation text."""
+def test_full_extraction(request: LeadTestExtractionRequest, db: Session = Depends(get_sync_db)):
+    """Test extraction, lead update, property matching, and status update from sample conversation text."""
     conversation_text = request.conversation_text
 
-    # ✅ Create a fake in-memory lead (not saved to DB)
-    fake_lead_id = uuid4()
-    lead = Lead(
-        id=fake_lead_id,
-        name=None,
-        email=None,
+    # ✅ Create a real lead in DB for testing (optional) or use an in-memory fake
+    fake_lead = Lead(
         phone="5555555555",
         status="new",
         id_verified=True,
     )
-
-    # ✅ Create a fake property interest (for testing)
-    fake_property_interest = PropertyInterest(
-        lead_id=fake_lead_id,
-        property_id=uuid4(),  # Fake property ID
-        status="interested"
-    )
-    lead.property_interest.append(fake_property_interest)
+    db.add(fake_lead)
+    db.commit()
+    db.refresh(fake_lead)
 
     # ✅ Generate the extraction prompt
-    extraction_prompt = get_lead_extraction_prompt(conversation_text, current_status=lead.status)
+    extraction_prompt = get_lead_extraction_prompt(conversation_text, current_status=fake_lead.status)
 
     logger.info(f"📜 Extraction Prompt:\n{extraction_prompt}")
 
@@ -99,7 +91,7 @@ def test_full_extraction(request: LeadTestExtractionRequest):
 
     logger.info(f"🔍 Raw GPT Output:\n{extracted_data_raw}")
 
-    # 🧹 Clean up GPT markdown wrapping if needed
+    # 🧹 Clean GPT markdown if needed
     cleaned_data = extracted_data_raw.strip()
     if cleaned_data.startswith("```json"):
         cleaned_data = cleaned_data.replace("```json", "").replace("```", "").strip()
@@ -118,26 +110,51 @@ def test_full_extraction(request: LeadTestExtractionRequest):
     logger.info(f"✅ Parsed Extracted Data:\n{extracted_data}")
 
     # ✅ Apply extracted data to the lead
-    for key, value in extracted_data.items():
-        if hasattr(lead, key):
-            setattr(lead, key, value)
+    # for key, value in extracted_data.items():
+    #     if hasattr(fake_lead, key):
+    #         setattr(fake_lead, key, value)
 
-    # ✅ Run the status updater
-    update_lead_status_based_on_info(lead)
+    # db.commit()
 
-    # ✅ Return the results
+    # # ✅ Extract property address and attempt property match/attach
+    # property_address = extracted_data.get("property_address_interest")
+    # property_attached = handle_property_interest_from_extraction(db, fake_lead, property_address)
+
+    # db.refresh(fake_lead)
+
+    # # ✅ Run status updater
+    # update_lead_status_based_on_info(fake_lead)
+    # db.commit()
+
+    # # ✅ Get attached properties to confirm
+    # attached_properties = [
+    #     {
+    #         "property_id": pi.property_id,
+    #         "status": pi.status
+    #     }
+    #     for pi in fake_lead.property_interest
+    # ]
+
+    # ✅ Return full test result
+    # return {
+    #     "prompt": extraction_prompt,
+    #     "extracted_data": extracted_data,
+    #     "final_lead_status": fake_lead.status,
+    #     "property_address_interest": property_address,
+    #     "property_attached": property_attached,
+    #     "attached_properties": attached_properties,
+    #     "lead_info": {
+    #         "name": fake_lead.name,
+    #         "email": fake_lead.email,
+    #         "move_in_date": str(fake_lead.move_in_date) if fake_lead.move_in_date else None,
+    #         "id_verified": fake_lead.id_verified,
+    #     }
+    # }
+
     return {
         "prompt": extraction_prompt,
         "extracted_data": extracted_data,
-        "final_lead_status": lead.status,
-        "lead_info": {
-            "name": lead.name,
-            "email": lead.email,
-            "move_in_date": str(lead.move_in_date) if lead.move_in_date else None,
-            "id_verified": lead.id_verified,
-            "property_interest_count": len(lead.property_interest) if lead.property_interest else 0,
-            "property_interest_statuses": [pi.status for pi in lead.property_interest]
-        }
+        "property_address_interest": extracted_data.get("property_address_interest"),
     }
 
 
