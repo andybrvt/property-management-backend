@@ -14,7 +14,7 @@ from backend.fastapi.services.message_service import get_conversation_context
 from backend.fastapi.crud.lead import get_lead
 from backend.fastapi.services.ai.openai_client import call_openai_chat
 import logging
-
+from backend.fastapi.services.email_service import send_email
 
 router = APIRouter()
 
@@ -73,6 +73,34 @@ def test_ai_message_build(
         "messages_payload": messages, 
         "generated_ai_message": ai_message
     }
+
+
+@router.post("/test-send-email")
+def test_send_email(
+    db: Session = Depends(get_sync_db)
+):
+    """Test sending an email via SendGrid."""
+    test_email = "andybrvt@gmail.com"  # ⬅️ Replace with your own test email
+    subject = "Test Email from Leasing Assistant"
+    body = """
+Hi there,
+
+This is a test email from the Leasing Assistant system. 🎉
+
+If you're seeing this, the email service is working perfectly!
+
+Thanks,
+Your AI Leasing Team
+"""
+
+    success = send_email(test_email, subject, body)
+
+    if success:
+        return {"message": f"✅ Test email sent to {test_email}"}
+    else:
+        raise HTTPException(status_code=500, detail="❌ Failed to send test email.")
+
+
 
 # Create a message
 @router.post("/messages/", response_model=MessageSchema, status_code=status.HTTP_201_CREATED)
