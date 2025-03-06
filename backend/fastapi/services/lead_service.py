@@ -90,9 +90,13 @@ def check_field(lead, field):
     return getattr(lead, field) not in (None, "", False)
 
 # ✅ Status updater function
-def update_lead_status_based_on_info(lead: Lead):
+def update_lead_status_based_on_info(db: Session, lead: Lead):
     for status, required_fields in STATUS_RULES:
         if all(check_field(lead, field) for field in required_fields):
             lead.status = status
+            db.commit()
+            db.refresh(lead)
+            logging.info(f"✅ Lead {lead.id} status updated to '{status}'")
+
             break
 

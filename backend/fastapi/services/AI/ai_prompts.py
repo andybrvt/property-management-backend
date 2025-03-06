@@ -1,13 +1,19 @@
 from datetime import datetime
 
-def get_lead_extraction_prompt(conversation_text: str, current_status: str = "new") -> str:
+def get_lead_extraction_prompt(conversation_text: str, current_status: str = "new", latest_ai_message: str = None) -> str:
     current_date = datetime.now().strftime("%Y-%m-%d")
+
+    previous_ai_context = f"""
+### 🤖 Previous AI Question:
+{latest_ai_message}
+""" if latest_ai_message else ""
 
     return f"""
 You are an AI assistant extracting **only explicitly mentioned details** from a tenant's conversation.
 
 ### 📅 Today's Date: {current_date}
 ### 🛠️ Current Lead Status: "{current_status}"
+{previous_ai_context}
 
 ### 🎯 Extracted Details (Only if explicitly stated):
 - **name**

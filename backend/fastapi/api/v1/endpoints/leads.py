@@ -33,6 +33,28 @@ class LeadTestExtractionRequest(BaseModel):
 from uuid import uuid4
 from backend.fastapi.models.property_interest import PropertyInterest
 
+
+@router.delete("/leads/{lead_id}/reset-property-interest", status_code=200)
+def reset_lead_property_interest(
+    lead_id: UUID,
+    db: Session = Depends(get_sync_db)
+):
+    """Remove all property interests from a lead."""
+    
+    # Check if the lead exists
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail=f"Lead {lead_id} not found.")
+
+    # Delete all property interests for this lead
+    deleted_count = db.query(PropertyInterest).filter(
+        PropertyInterest.lead_id == lead_id
+    ).delete()
+
+    db.commit()
+
+    return {"message": f"✅ Reset {deleted_count} property interests for Lead {lead_id}."}
+
 # Test response 
 @router.post("/test-missing-info")
 def test_missing_info():
@@ -109,53 +131,43 @@ def test_full_extraction(request: LeadTestExtractionRequest, db: Session = Depen
 
     logger.info(f"✅ Parsed Extracted Data:\n{extracted_data}")
 
-    # ✅ Apply extracted data to the lead
-    # for key, value in extracted_data.items():
-    #     if hasattr(fake_lead, key):
-    #         setattr(fake_lead, key, value)
 
-    # db.commit()
+    # ✅ Extract property address and attempt property match/attach
+    property_address = extracted_data.get("property_address_interest")
+    property_attached = handle_property_interest_from_extraction(db, fake_lead, property_address)
 
-    # # ✅ Extract property address and attempt property match/attach
-    # property_address = extracted_data.get("property_address_interest")
-    # property_attached = handle_property_interest_from_extraction(db, fake_lead, property_address)
+    db.refresh(fake_lead)
 
-    # db.refresh(fake_lead)
+    # ✅ Run status updater
+    update_lead_status_based_on_info(fake_lead)
+    db.commit()
 
-    # # ✅ Run status updater
-    # update_lead_status_based_on_info(fake_lead)
-    # db.commit()
-
-    # # ✅ Get attached properties to confirm
-    # attached_properties = [
-    #     {
-    #         "property_id": pi.property_id,
-    #         "status": pi.status
-    #     }
-    #     for pi in fake_lead.property_interest
-    # ]
+    # ✅ Get attached properties to confirm
+    attached_properties = [
+        {
+            "property_id": pi.property_id,
+            "status": pi.status
+        }
+        for pi in fake_lead.property_interest
+    ]
 
     # ✅ Return full test result
-    # return {
-    #     "prompt": extraction_prompt,
-    #     "extracted_data": extracted_data,
-    #     "final_lead_status": fake_lead.status,
-    #     "property_address_interest": property_address,
-    #     "property_attached": property_attached,
-    #     "attached_properties": attached_properties,
-    #     "lead_info": {
-    #         "name": fake_lead.name,
-    #         "email": fake_lead.email,
-    #         "move_in_date": str(fake_lead.move_in_date) if fake_lead.move_in_date else None,
-    #         "id_verified": fake_lead.id_verified,
-    #     }
-    # }
-
     return {
         "prompt": extraction_prompt,
         "extracted_data": extracted_data,
-        "property_address_interest": extracted_data.get("property_address_interest"),
+        "final_lead_status": fake_lead.status,
+        "property_address_interest": property_address,
+        "property_attached": property_attached,
+        "attached_properties": attached_properties,
+        "lead_info": {
+            "name": fake_lead.name,
+            "email": fake_lead.email,
+            "move_in_date": str(fake_lead.move_in_date) if fake_lead.move_in_date else None,
+            "id_verified": fake_lead.id_verified,
+        }
     }
+
+  
 
 
 @router.post("/start")

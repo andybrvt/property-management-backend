@@ -6,7 +6,7 @@ from backend.fastapi.models.lead import Lead
 from sqlalchemy.orm import Session
 import logging
 from datetime import datetime, timedelta
-from backend.fastapi.crud.message import get_messages_by_session
+from backend.fastapi.crud.message import get_messages_by_session, get_latest_ai_message_for_lead
 from backend.fastapi.services.ai.ai_prompts import get_lead_extraction_prompt
 from backend.fastapi.services.ai.openai_client import call_openai_extraction
 from backend.fastapi.utils.parsers import parse_extracted_lead_info
@@ -14,7 +14,6 @@ from backend.fastapi.services.lead.update_lead_mod import update_lead_with_extra
 from backend.fastapi.crud.lead import get_lead
 from backend.fastapi.services.lead_service import update_lead_status_based_on_info
 from backend.fastapi.services.property_service import handle_property_interest_from_extraction
-
 
 
 def extract_lead_details_from_messages(db: Session, lead_id: int, session_id: str):
@@ -44,9 +43,20 @@ def extract_lead_details_from_messages(db: Session, lead_id: int, session_id: st
     lead = get_lead(db, lead_id)
     if not lead:
         return None
+    
+    # 🧠 NEW: Get the latest AI message sent to this lead
+    latest_ai_message = get_latest_ai_message_for_lead(db, lead_id)
 
-    # Step 4: Generate the AI prompt to extract lead details
-    extraction_prompt = get_lead_extraction_prompt(conversation_text, current_status=lead.status)
+    if latest_ai_message:
+        logging.info(f"📩 Latest AI message for context: {latest_ai_message.content}")
+    else:
+        logging.info("📩 No previous AI message found for this lead.")
+
+    extraction_prompt = get_lead_extraction_prompt(
+        conversation_text,
+        current_status=lead.status,
+        latest_ai_message=latest_ai_message.content if latest_ai_message else None
+    )
 
     # ✅ LOGGING: Debugging full conversation
     logging.info(f"📝 Extracting details from conversation for Lead {lead_id}:\n{conversation_text}")
@@ -76,9 +86,10 @@ def extract_lead_details_from_messages(db: Session, lead_id: int, session_id: st
     if not extracted_info:
         return
     
-
-    property_address = extracted_info.get("property_address_interest")
-    handle_property_interest_from_extraction(db, lead, property_address)
+    property_updated = False
+    property_address = extracted_info.get("property_address_interest", "").strip()
+    if property_address:
+        property_updated = handle_property_interest_from_extraction(db, lead, property_address)
 
     # Step 8: Refresh the lead object to ensure it's the latest version
     lead = db.query(Lead).filter(Lead.id == lead_id).first()
@@ -87,10 +98,9 @@ def extract_lead_details_from_messages(db: Session, lead_id: int, session_id: st
 
 
     # Step 9: Update the lead with the extracted details
-    updated = update_lead_with_extracted_info(db, lead, extracted_info)  # Track if we make updates
+    lead_updated = update_lead_with_extracted_info(db, lead, extracted_info)  # Track if we make updates
 
     # Step 10: If any updates were made, update the status and commit the changes
-    if updated:
-        update_lead_status_based_on_info(lead)  # ✅ Run status updater here
-        db.commit()  # Save updates to database
+    if lead_updated or property_updated:
+        update_lead_status_based_on_info(db,lead)  # ✅ Run status updater here
         logging.info(f"✅ Updated Lead {lead_id} with extracted details")

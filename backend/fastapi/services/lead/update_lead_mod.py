@@ -14,32 +14,38 @@ def is_valid_email(email: str) -> bool:
 def update_lead_with_extracted_info(db: Session, lead: Lead, extracted_info: dict) -> bool:
     updated = False
 
-    if "name" in extracted_info and not lead.name:
-        lead.name = extracted_info["name"]
-        updated = True
-    if "move_in_date" in extracted_info and not lead.move_in_date:
-        try:
-            lead.move_in_date = datetime.strptime(extracted_info["move_in_date"], "%Y-%m-%d")
+    if name := extracted_info.get("name"):
+        if not lead.name:
+            lead.name = name.strip()
             updated = True
-        except ValueError:
-            logging.error(f"❌ Invalid date format: {extracted_info['move_in_date']}")
-    if "income" in extracted_info and (lead.income is None or lead.income == 0):
-        try:
-            lead.income = int(extracted_info["income"])
+
+    if move_in_date_str := extracted_info.get("move_in_date"):
+        if not lead.move_in_date and move_in_date_str.strip():
+            try:
+                lead.move_in_date = datetime.strptime(move_in_date_str, "%Y-%m-%d")
+                updated = True
+            except ValueError:
+                logging.error(f"❌ Invalid date format: {move_in_date_str}")
+
+    if income_str := extracted_info.get("income"):
+        if (lead.total_income is None or lead.total_income == 0) and income_str.strip():
+            try:
+                lead.total_income = int(income_str)
+                updated = True
+            except ValueError:
+                logging.error(f"❌ Invalid income format: {income_str}")
+
+    if has_pets_str := extracted_info.get("has_pets"):
+        if has_pets_str.strip():
+            lead.has_pets_archived = has_pets_str.lower() == "true"
             updated = True
-        except ValueError:
-            logging.error(f"❌ Invalid income format: {extracted_info['income']}")
-    if "has_pets" in extracted_info and lead.has_pets is None:
-        lead.has_pets = bool(extracted_info["has_pets"])
-        updated = True
-    if "rented_before" in extracted_info and lead.rented_before is None:
-        lead.rented_before = bool(extracted_info["rented_before"])
-        updated = True
-    if "property_interest" in extracted_info and not lead.property_interest:
-        lead.property_interest = extracted_info["property_interest"]
-        updated = True
-    if "email" in extracted_info:
-        email_value = extracted_info["email"].strip()
+
+    if rented_before_str := extracted_info.get("rented_before"):
+        if rented_before_str.strip():
+            lead.rented_before_archived = rented_before_str.lower() == "true"
+            updated = True
+
+    if email_value := extracted_info.get("email", "").strip():
         if is_valid_email(email_value):
             lead.email = email_value
             updated = True

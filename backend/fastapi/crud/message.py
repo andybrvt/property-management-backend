@@ -22,6 +22,17 @@ def get_messages_by_session(db: Session, session_id: str):
         .all()
     )
 
+def get_latest_ai_message_for_lead(db: Session, lead_id: str):
+    """
+    Retrieves the most recent AI-generated message sent to a specific lead.
+    """
+    return (
+        db.query(Message)
+        .filter(Message.lead_id == lead_id, Message.is_ai_generated == True)
+        .order_by(Message.sent_at.desc())
+        .first()
+    )
+
 
 def create_message(db: Session, message_data: Dict[str, Any]) -> Message:
     """Create a new message"""
