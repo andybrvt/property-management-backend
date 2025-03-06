@@ -173,7 +173,7 @@ def test_full_extraction(request: LeadTestExtractionRequest, db: Session = Depen
     db.refresh(fake_lead)
 
     # ✅ Run status updater
-    update_lead_status_based_on_info(fake_lead)
+    update_lead_status_based_on_info(db, fake_lead)
     db.commit()
 
     # ✅ Get attached properties to confirm
