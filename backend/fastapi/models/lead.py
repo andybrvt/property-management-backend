@@ -69,6 +69,11 @@ class Lead(Base):
     uncertain_interest = Column(Boolean, default=True)  # True if they seem unsure about a specific property
     interest_city = Column(String, nullable=True)  # Optional, helps narrow down property suggestions
     
+
+    # driver license
+    driver_license_url = Column(String, nullable=True)
+    driver_license_uploaded_at = Column(DateTime, nullable=True)
+
     # Relationships
     messages = relationship("Message", back_populates="lead")
     employment_history = relationship("EmploymentHistory", back_populates="lead", cascade="all, delete-orphan")

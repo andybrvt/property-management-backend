@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from uuid import UUID
 from backend.fastapi.dependencies.database import get_sync_db
@@ -19,6 +19,10 @@ import json
 import logging
 from backend.fastapi.models.lead import Lead
 from backend.fastapi.services.property_service import handle_property_interest_from_extraction
+from backend.fastapi.utils.s3 import upload_file_to_s3
+from datetime import datetime
+
+
 
 router = APIRouter()
 
@@ -237,6 +241,22 @@ def start_lead_conversation(phone_number: str, db: Session = Depends(get_sync_db
     return {"message": "AI conversation started", "phone_number": formatted_number}
 
 
+
+@router.post("/upload-id/{lead_id}")
+async def upload_driver_license(lead_id: UUID, file: UploadFile = File(...), db: Session = Depends(get_sync_db)):
+    file_content = await file.read()
+    file_url = upload_file_to_s3(file_content, file.filename)
+
+    # Update the lead in the DB
+    lead = db.query(Lead).get(lead_id)
+    if not lead:
+        return {"success": False, "message": "Lead not found."}
+
+    lead.driver_license_url = file_url
+    lead.driver_license_uploaded_at = datetime.utcnow()
+    db.commit()
+
+    return {"success": True, "file_url": file_url}
 
 
 @router.post("/", response_model=LeadSchema, status_code=201)

@@ -41,6 +41,8 @@ class LeadSchema(LeadBase):
     created_at: datetime
     updated_at: datetime
     property_interest: List[PropertyInterestResponse] = []
+    driver_license_url: Optional[str] = None
+    driver_license_uploaded_at: Optional[datetime] = None
 
 
     class Config:
