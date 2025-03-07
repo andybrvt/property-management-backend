@@ -14,8 +14,8 @@ from backend.fastapi.services.message_service import get_conversation_context
 from backend.fastapi.crud.lead import get_lead
 from backend.fastapi.services.ai.openai_client import call_openai_chat
 import logging
-from backend.fastapi.services.email_service import send_email
-
+from backend.fastapi.services.email_service import send_verification_email
+from backend.fastapi.models.lead import Lead
 router = APIRouter()
 
 
@@ -75,31 +75,24 @@ def test_ai_message_build(
     }
 
 
-@router.post("/test-send-email")
-def test_send_email(
+@router.post("/test-send-verification-email/{lead_id}")
+def test_send_verification_email(
+    lead_id: UUID,
     db: Session = Depends(get_sync_db)
 ):
-    """Test sending an email via SendGrid."""
-    test_email = "andybrvt@gmail.com"  # ⬅️ Replace with your own test email
-    subject = "Test Email from Leasing Assistant"
-    body = """
-Hi there,
+    """Test sending the verification email for a specific lead."""
+    # Get the lead from the database
+    lead = db.query(Lead).get(lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail=f"❌ Lead with ID {lead_id} not found.")
 
-This is a test email from the Leasing Assistant system. 🎉
+    if not lead.email:
+        raise HTTPException(status_code=400, detail=f"❌ Lead with ID {lead_id} does not have an email.")
 
-If you're seeing this, the email service is working perfectly!
+    # Send the verification email
+    send_verification_email(lead)
 
-Thanks,
-Your AI Leasing Team
-"""
-
-    success = send_email(test_email, subject, body)
-
-    if success:
-        return {"message": f"✅ Test email sent to {test_email}"}
-    else:
-        raise HTTPException(status_code=500, detail="❌ Failed to send test email.")
-
+    return {"message": f"✅ Verification email sent to {lead.email}"}
 
 
 # Create a message

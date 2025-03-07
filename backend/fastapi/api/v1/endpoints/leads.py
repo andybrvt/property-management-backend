@@ -23,7 +23,9 @@ from backend.fastapi.utils.s3 import upload_file_to_s3
 from datetime import datetime
 from backend.fastapi.services.property_service import get_calendly_link
 from backend.fastapi.services.message_service import save_ai_message
-
+import boto3
+import os
+from backend.fastapi.services.email_service import send_operator_id_notification
 router = APIRouter()
 
 # ✅ Set up logging
@@ -273,6 +275,7 @@ async def upload_driver_license(lead_id: UUID, file: UploadFile = File(...), db:
     # ✅ Optionally save the SMS message
     save_ai_message(db, lead_id, sms_message)
 
+    send_operator_id_notification(lead)
 
     return {"success": True, "file_url": file_url}
 
@@ -312,3 +315,33 @@ def delete_lead_by_id(lead_id: UUID, db: Session = Depends(get_sync_db)):
     if not result:
         raise HTTPException(status_code=404, detail="Lead not found")
     return {"message": "Lead deleted successfully", "lead_id": str(lead_id)}
+
+
+s3_client = boto3.client(
+    's3',
+    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
+    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+    region_name=os.getenv('AWS_DEFAULT_REGION')
+)
+
+@router.get("/admin/get-id-url/{lead_id}")
+def get_presigned_id_url(lead_id: str, db: Session = Depends(get_sync_db)):
+    lead = db.query(Lead).get(lead_id)
+    if not lead or not lead.driver_license_url:
+        raise HTTPException(status_code=404, detail="Lead or driver's license not found")
+
+    # Extract the object key from the stored URL
+    file_key = lead.driver_license_url.split(".amazonaws.com/")[-1]
+
+    try:
+        presigned_url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': os.getenv('AWS_S3_BUCKET_NAME'),
+                'Key': file_key
+            },
+            ExpiresIn=3600  # Link expires in 1 hour
+        )
+        return {"url": presigned_url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating URL: {e}")
