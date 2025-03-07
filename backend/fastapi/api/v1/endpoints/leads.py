@@ -21,8 +21,8 @@ from backend.fastapi.models.lead import Lead
 from backend.fastapi.services.property_service import handle_property_interest_from_extraction
 from backend.fastapi.utils.s3 import upload_file_to_s3
 from datetime import datetime
-
-
+from backend.fastapi.services.property_service import get_calendly_link
+from backend.fastapi.services.message_service import save_ai_message
 
 router = APIRouter()
 
@@ -255,6 +255,24 @@ async def upload_driver_license(lead_id: UUID, file: UploadFile = File(...), db:
     lead.driver_license_url = file_url
     lead.driver_license_uploaded_at = datetime.utcnow()
     db.commit()
+
+    property_interest = db.query(PropertyInterest).filter_by(lead_id=lead_id).first()
+    if property_interest:
+        calendly_link = get_calendly_link(db, property_interest.property_id)
+    else:
+        calendly_link = "https://calendly.com/default"
+
+     # ✅ Send templated SMS
+    sms_message = (
+        f"Hey {lead.name or ''}! Thanks for uploading your ID ✅ "
+        f"Book your showing here: {calendly_link}"
+    )
+
+    send_sms(lead.phone, sms_message)
+
+    # ✅ Optionally save the SMS message
+    save_ai_message(db, lead_id, sms_message)
+
 
     return {"success": True, "file_url": file_url}
 

@@ -109,3 +109,9 @@ def format_property_list(properties: List[Property]) -> str:
         f"🏠 {prop.address} — {prop.num_bedrooms}BR/{prop.num_bathrooms}BA, ${prop.rent_price}/mo"
         for prop in properties
     )
+
+def get_calendly_link(db: Session, property_id: UUID) -> str:
+    property = db.query(Property).get(property_id)
+    if property and property.calendly_link:
+        return property.calendly_link
+    return "https://calendly.com/default"

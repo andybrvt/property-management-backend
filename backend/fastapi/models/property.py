@@ -22,6 +22,8 @@ class Property(Base):
     status = Column(String, default="available")  # available, occupied, under maintenance
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    calendly_link = Column(String, nullable=True)  # ✅ New field for scheduling link
+
 
     # Relationships
     owner = relationship("User", back_populates="properties")  # ✅ Link to User (property owner)
