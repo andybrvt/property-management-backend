@@ -18,7 +18,7 @@ MISSING_INFO_QUESTIONS = {
     "name": "Hey! What's your name? 😊",
     "property_interest": "Which property are you interested in? 🏠",
     "email": "Sounds good! Can you share your best email? We’ll send you a secure link to verify your ID before scheduling.",
-    "id_verified": "Just checking in—did you get a chance to upload your ID? Let me know if you need the link again.",
+    "id_verified": "Just send you the email to verify your id before scheduling, let us know if you have any questions.",
     "scheduled_showing_date": "Great! When would you like to schedule your showing? 📅",
 }
 

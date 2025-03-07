@@ -4,6 +4,7 @@ from backend.fastapi.services.sms_service import format_phone_number
 import logging
 from backend.fastapi.constants.lead_statuses import LEAD_STATUSES
 from backend.fastapi.models.lead import Lead
+from backend.fastapi.services.email_service import send_verification_email
 # ✅ Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -97,6 +98,10 @@ def update_lead_status_based_on_info(db: Session, lead: Lead):
             db.commit()
             db.refresh(lead)
             logging.info(f"✅ Lead {lead.id} status updated to '{status}'")
+
+            # ✅ If status becomes "id_verification_requested", send the email
+            if status == "id_verification_requested":
+                send_verification_email(lead)
 
             break
 
