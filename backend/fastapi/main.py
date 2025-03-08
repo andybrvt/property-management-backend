@@ -36,5 +36,5 @@ if __name__ == "__main__":
         app="backend.fastapi.main:app",
         host = args.host,
         port=int(os.getenv("PORT", 3000)),
-        reload=args.mode == "dev"
+        reload=False if args.mode == "prod" else True
     )
