@@ -7,7 +7,9 @@ from backend.fastapi.crud import property as property_crud
 from backend.fastapi.schemas.property import PropertyCreate, PropertyResponse, PropertyUpdate
 from backend.fastapi.services.property_service import attach_property_to_lead
 from backend.fastapi.services import property_service  # ✅ make sure this import exists
-
+from backend.fastapi.schemas.property import PropertyDropdownResponse
+from backend.fastapi.models.property import Property
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
@@ -48,3 +50,12 @@ def get_properties(skip: int = 0, limit: int = 10, db: Session = Depends(get_syn
 def update_property(property_id: UUID, property_data: PropertyUpdate, db: Session = Depends(get_sync_db)):
     """Update property details"""
     return property_crud.update_property(db, property_id=property_id, property_data=property_data)
+
+
+@router.get("/properties", response_model=List[PropertyDropdownResponse])
+def get_all_properties(db: Session = Depends(get_sync_db)):
+    """Fetch all properties for dropdown selection."""
+    properties = db.query(Property).all()
+    
+    # ✅ Ensure ID is returned as a string
+    return [PropertyDropdownResponse(id=str(p.id), address=p.address) for p in properties]

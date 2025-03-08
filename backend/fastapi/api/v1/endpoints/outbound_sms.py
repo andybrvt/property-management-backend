@@ -4,6 +4,8 @@ from backend.fastapi.dependencies.database import get_sync_db
 from backend.fastapi.services.lead_service import get_or_create_lead
 from backend.fastapi.services.sms_service import send_sms, format_phone_number
 from backend.fastapi.services.message_service import store_message_log
+from backend.fastapi.schemas.mass_text import MassTextRequest
+from backend.fastapi.utils.phone_utils import extract_phone_numbers_gpt
 
 router = APIRouter()
 
@@ -41,3 +43,34 @@ def start_lead_conversation(phone_number: str, db: Session = Depends(get_sync_db
     store_message_log(db, formatted_number, "outbound", first_message, lead_id=lead.id)
 
     return {"message": "Conversation started", "phone_number": formatted_number}
+
+@router.post("/mass-text")
+def mass_text_leads(
+    payload: MassTextRequest,
+    db: Session = Depends(get_sync_db)
+):
+    phone_numbers = extract_phone_numbers_gpt(payload.text)
+    if not phone_numbers:
+        raise HTTPException(status_code=400, detail="No valid phone numbers found.")
+
+    sent_count = 0
+
+    for number in phone_numbers:
+        formatted_number = format_phone_number(number)
+        if not formatted_number:
+            continue
+
+        lead, error = get_or_create_lead(db, formatted_number, create_new=True)
+        if error:
+            continue
+
+        message = f"Hey! We noticed you might be interested in a property at {payload.address}. Let me know if you'd like details or to schedule a showing!"
+
+        result = send_sms(formatted_number, message)
+        if result["status"] == "error":
+            continue
+
+        store_message_log(db, formatted_number, "outbound", message, lead_id=lead.id)
+        sent_count += 1
+
+    return {"message": f"✅ Successfully sent texts to {sent_count} leads."}

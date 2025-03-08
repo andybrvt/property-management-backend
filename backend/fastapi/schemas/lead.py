@@ -43,6 +43,8 @@ class LeadSchema(LeadBase):
     property_interest: List[PropertyInterestResponse] = []
     driver_license_url: Optional[str] = None
     driver_license_uploaded_at: Optional[datetime] = None
+    id_verified: bool
+    id_verification_date: Optional[datetime] = None
 
 
     class Config:

@@ -39,3 +39,11 @@ class PropertyResponse(PropertyBase):
 
     class Config:
         from_attributes = True  # ✅ Allows SQLAlchemy ORM integration
+
+class PropertyDropdownResponse(BaseModel):
+    id: str
+    address: str  # Only return the ID + address
+
+    class Config:
+        from_attributes = True
+

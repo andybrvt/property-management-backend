@@ -20,7 +20,7 @@ import logging
 from backend.fastapi.models.lead import Lead
 from backend.fastapi.services.property_service import handle_property_interest_from_extraction
 from backend.fastapi.utils.s3 import upload_file_to_s3
-from datetime import datetime
+from datetime import datetime, timezone
 from backend.fastapi.services.property_service import get_calendly_link
 from backend.fastapi.services.message_service import save_ai_message
 import boto3
@@ -255,8 +255,14 @@ async def upload_driver_license(lead_id: UUID, file: UploadFile = File(...), db:
         return {"success": False, "message": "Lead not found."}
 
     lead.driver_license_url = file_url
-    lead.driver_license_uploaded_at = datetime.utcnow()
+    lead.driver_license_uploaded_at = datetime.now(timezone.utc)
+
+    # ✅ Mark ID as verified
+    lead.id_verified = True
+    lead.id_verification_date = datetime.now(timezone.utc)
     db.commit()
+    db.refresh(lead)
+
 
     property_interest = db.query(PropertyInterest).filter_by(lead_id=lead_id).first()
     if property_interest:
@@ -274,8 +280,10 @@ async def upload_driver_license(lead_id: UUID, file: UploadFile = File(...), db:
 
     # ✅ Optionally save the SMS message
     save_ai_message(db, lead_id, sms_message)
-
     send_operator_id_notification(lead)
+
+
+
 
     return {"success": True, "file_url": file_url}
 

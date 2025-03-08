@@ -9,7 +9,7 @@ def setup_cors(app):
     origins = [
         global_settings.API_BASE_URL,
         "http://localhost",
-        "http://localhost:5000",
+        "http://localhost:3000",
         "https://*.ngrok-free.app",
         "https://*.ngrok.io",
         "*"
