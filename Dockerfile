@@ -10,7 +10,7 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc
+    apt-get install -y --no-install-recommends gcc libpq-dev
 
 # Install any needed packages specified in requirements.txt into a virtual environment
 RUN python -m venv /opt/venv
