@@ -1,9 +1,11 @@
 import logging
 from fastapi import Request
+from typing import Union
+
 
 logger = logging.getLogger(__name__)
 
-async def parse_incoming_sms(request: Request) -> tuple[str, str] | tuple[None, None]:
+async def parse_incoming_sms(request: Request) -> Union[tuple[str, str], tuple[None, None]]:
     """Parses incoming SMS from Twilio webhook."""
     try:
         form_data = await request.form()
