@@ -26,6 +26,8 @@ from backend.fastapi.services.message_service import save_ai_message
 import boto3
 import os
 from backend.fastapi.services.email_service import send_operator_id_notification
+from backend.fastapi.models.message import Message
+
 router = APIRouter()
 
 # ✅ Set up logging
@@ -39,7 +41,7 @@ class LeadTestExtractionRequest(BaseModel):
 from uuid import uuid4
 from backend.fastapi.models.property_interest import PropertyInterest
 
-
+# this will be used to test extraction important informmation from leads coming in
 @router.post("/test/extract", status_code=200)
 def test_lead_extraction(
     payload: LeadTestExtractionRequest,
@@ -353,3 +355,28 @@ def get_presigned_id_url(lead_id: str, db: Session = Depends(get_sync_db)):
         return {"url": presigned_url}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating URL: {e}")
+    
+
+@router.delete("/test/reset-lead/{phone_number}")
+def reset_lead(phone_number: str, db: Session = Depends(get_sync_db)):
+    """
+    Deletes all messages associated with a lead and then deletes the lead itself.
+    Used for testing to reset a lead's conversation history.
+    """
+
+    # ✅ Step 1: Find the lead by phone number
+    lead = db.query(Lead).filter(Lead.phone == phone_number).first()
+    
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    # ✅ Step 2: Delete all messages associated with this lead
+    deleted_messages = db.query(Message).filter(Message.lead_id == lead.id).delete()
+    logger.info(f"🗑️ Deleted {deleted_messages} messages for lead {lead.id}")
+
+    # ✅ Step 3: Delete the lead
+    db.delete(lead)
+    db.commit()
+    logger.info(f"🗑️ Lead {lead.id} deleted successfully")
+
+    return {"message": f"Lead {phone_number} and all associated messages deleted."}

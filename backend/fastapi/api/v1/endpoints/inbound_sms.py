@@ -48,11 +48,15 @@ async def receive_sms(request: Request, db: Session = Depends(get_sync_db)):
     # ✅ Store the received message with `session_id`
     store_message_log(db, from_number, "incoming", message_body, lead_id=lead.id, session_id=session_id)
 
+    # this is to see if they send muttiple messsages at once and group them together 
     if await wait_and_check_new_messages(db, lead.id):
         return {"status": "waiting", "message": "Newer messages detected, delaying AI response"}
 
+
     # ✅ Generate AI response using the full session conversation
     context = "opening" if is_new_lead else "follow_up"
+
+    # Most of the message processing, lead updating, and generation happens here
     ai_response = generate_ai_message(db, lead.id, session_id, context, lead)
 
     # ✅ Send AI-generated message

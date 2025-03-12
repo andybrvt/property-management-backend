@@ -16,15 +16,19 @@ You are an AI assistant extracting **only explicitly mentioned details** from a 
 {previous_ai_context}
 
 ### 🎯 Extracted Details (Only if explicitly stated):
-- **name**
-- **move_in_date**
-- **income** (Capture any mention of income, salary, or budget, even if approximate.)
-- **has_pets**
-- **rented_before**
-- **property_interest**
-- **property_address_interest** (If they mention a specific property address they are interested in. Leave blank if none.)
-- **city_interest** (If they mention a city they are interested in. Leave blank if none.)
-- **email**
+- **name** (Full name of the tenant)
+- **property_interest** (If they mention interest in a property, extract the name/identifier)
+- **full_address** (If they mention a full property address, extract it. If only partial info is provided, extract what is available.)
+- **street_address** (Extract only the street part if mentioned)
+- **city** (Extract city name if mentioned)
+- **state** (Extract state if mentioned)
+- **zip_code** (Extract ZIP code if available)
+- **move_in_date** (If they mention when they want to move in)
+- **income** (Capture any mention of income, salary, or budget)
+- **has_pets** (Yes/No, based on explicit mention)
+- **rented_before** (Yes/No, based on explicit mention)
+- **email** (If they provided an email address)
+
 
 
 ### ⚠️ Rules:
