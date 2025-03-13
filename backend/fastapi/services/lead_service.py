@@ -72,16 +72,16 @@ def update_lead_status(db: Session, lead: Lead, new_status: str):
 
 # ✅ Define the required fields for each status (stacked correctly)
 STATUS_RULES = [
-    ("showing_scheduled", ["name", "property_interest", "email", "id_verified", "scheduled_showing_date"]),
-    ("id_verified", ["name", "property_interest", "email", "id_verified"]),
-    ("id_verification_requested", ["name", "property_interest", "email"]),
-    ("interested_in_showing", ["name", "property_interest"]),
-    ("new", []),  # Fallback
+    ("showing_scheduled", ["name", "property_interest", "id_verified", "scheduled_showing_date"]),
+    ("id_verified", ["name", "property_interest", "id_verified"]),  # ✅ ID must be uploaded before verification
+    ("id_verification_requested", ["name", "property_interest"]),  # ✅ If we have name + property, request ID
+    ("new", []),  # ✅ Default for leads with no attached info
 ]
 
 # ✅ Special checks for non-standard fields
 SPECIAL_FIELD_CHECKS = {
     "property_interest": lambda lead: len(lead.property_interest) > 0,
+    "id_verified": lambda lead: lead.id_verified or bool(lead.driver_license_url),  # ✅ Accepts `id_verified = true`
 }
 
 # ✅ Universal field checker
@@ -101,7 +101,7 @@ def update_lead_status_based_on_info(db: Session, lead: Lead):
 
             # ✅ If status becomes "id_verification_requested", send the email
             if status == "id_verification_requested":
-                send_verification_email(lead)
+                logging.info(f"📸 Requesting ID verification via SMS for Lead {lead.id}")
 
             break
 

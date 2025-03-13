@@ -27,6 +27,7 @@ import boto3
 import os
 from backend.fastapi.services.email_service import send_operator_id_notification
 from backend.fastapi.models.message import Message
+from backend.fastapi.models.property import Property
 
 router = APIRouter()
 
@@ -94,6 +95,98 @@ def reset_lead_property_interest(
     db.refresh(lead)
 
     return {"message": f"✅ Reset {deleted_count} property interests for Lead {lead_id}."}
+
+@router.post("/test/update-lead/")
+def test_update_lead(
+    lead_id: str,
+    name: str = None,
+    property_id: str = None,
+    id_verified: bool = None,
+    scheduled_showing_date: str = None,
+    db: Session = Depends(get_sync_db)
+):
+    """
+    Test route to manually update a lead's key fields and trigger status updates.
+    """
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    updated = False
+
+    # ✅ Update Name
+    if name and lead.name != name:
+        lead.name = name
+        updated = True
+
+    # ✅ Attach Property Interest
+    if property_id:
+        property_obj = db.query(Property).filter(Property.id == property_id).first()
+        if property_obj:
+            existing_interest = db.query(PropertyInterest).filter_by(
+                lead_id=lead.id, property_id=property_id
+            ).first()
+            if not existing_interest:
+                new_interest = PropertyInterest(lead_id=lead.id, property_id=property_id)
+                db.add(new_interest)
+                lead.uncertain_interest = False  # ✅ Mark as certain interest
+                updated = True
+                logging.info(f"🏠 Attached Property {property_id} to Lead {lead.id}")
+        else:
+            logging.warning(f"❌ Property ID {property_id} not found.")
+
+    # ✅ Update ID Verification Status
+    if id_verified is not None and lead.id_verified != id_verified:
+        lead.id_verified = id_verified
+        updated = True
+
+    # ✅ Update Scheduled Showing Date
+    if scheduled_showing_date:
+        try:
+            from datetime import datetime
+            parsed_date = datetime.strptime(scheduled_showing_date, "%Y-%m-%d")
+            lead.scheduled_showing_date = parsed_date
+            updated = True
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format (Use YYYY-MM-DD)")
+
+    if updated:
+        db.commit()
+        db.refresh(lead)
+        update_lead_status_based_on_info(db, lead)  # ✅ Trigger status update
+        logging.info(f"✅ Lead {lead.id} updated successfully.")
+        return {"status": "success", "lead_id": str(lead.id), "message": "Lead updated and status refreshed."}
+    
+    return {"status": "no_changes", "message": "No fields were updated."}
+
+@router.post("/test/update-lead-status/{lead_id}")
+def test_update_lead_status(lead_id: str, db: Session = Depends(get_sync_db)):
+    """
+    Test route to manually trigger lead status updates and verify correct behavior.
+    """
+
+    # ✅ Retrieve the lead by ID
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    # ✅ Log the lead's current state before update
+    old_status = lead.status
+    logging.info(f"🔍 Testing Lead Status Update for Lead {lead_id} (Current: {old_status})")
+
+    # ✅ Run the status update function
+    update_lead_status_based_on_info(db, lead)
+
+    # ✅ Log the updated status
+    new_status = lead.status
+    logging.info(f"✅ Lead {lead_id} status updated from '{old_status}' → '{new_status}'")
+
+    return {
+        "lead_id": str(lead.id),
+        "old_status": old_status,
+        "new_status": new_status,
+        "message": f"Lead status updated successfully: {new_status}"
+    }
 
 # Test response 
 @router.post("/test-missing-info")

@@ -2,6 +2,9 @@ from pydantic import BaseModel
 from uuid import UUID
 from datetime import datetime
 
+
+
+
 class PropertyInterestResponse(BaseModel):
     id: UUID
     property_id: UUID

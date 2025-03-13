@@ -7,6 +7,7 @@ from typing import List
 import logging
 from backend.fastapi.models.lead import Lead
 from typing import Optional
+from fuzzywuzzy import process  # ✅ For fuzzy matching
 
 
 
@@ -44,9 +45,38 @@ def get_top_available_properties(db: Session, limit: int = 3) -> List[Property]:
 
 
 def get_property_by_address(db: Session, address: str) -> Property:
-    return db.query(Property).filter(
-        Property.address.ilike(f"%{address}%")
+    """
+    Finds a property by address. Uses:
+    1. Exact match first
+    2. Partial match (street, city, state)
+    3. Fuzzy matching if needed
+    """
+    address = address.strip().lower()
+
+    # Step 1️⃣: Try Exact Match First
+    exact_match = db.query(Property).filter(
+        Property.full_address.ilike(f"%{address}%")
     ).first()
+    
+    if exact_match:
+        return exact_match  # ✅ Return immediately if exact match is found
+
+    # Step 2️⃣: Try Partial Match (Street, City, State)
+    properties = db.query(Property).all()  # ✅ Fetch all properties
+
+    # ✅ Ignore properties with no full_address
+    property_addresses = {
+        prop.full_address.lower(): prop for prop in properties if prop.full_address
+    }
+
+    # Step 3️⃣: Use Fuzzy Matching to Rank Best Match
+    if property_addresses:  # ✅ Ensure there's at least one valid address before running fuzzy matching
+        best_match, confidence = process.extractOne(address, property_addresses.keys())
+
+        if best_match and confidence > 80:  # ✅ Only return high-confidence matches
+            return property_addresses[best_match]
+
+    return None  # ❌ No match found
 
 
 def handle_property_interest_from_extraction(

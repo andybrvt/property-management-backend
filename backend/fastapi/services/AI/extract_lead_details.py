@@ -58,34 +58,26 @@ def extract_lead_details_from_messages(db: Session, lead_id: int, session_id: st
         latest_ai_message=latest_ai_message.content if latest_ai_message else None
     )
 
-    # ✅ LOGGING: Debugging full conversation
     logging.info(f"📝 Extracting details from conversation for Lead {lead_id}:\n{conversation_text}")
-
-    # ✅ LOGGING: Log full AI prompt
     logging.info(f"📜 AI Extraction Prompt for Lead {lead_id}:\n{extraction_prompt}")
 
     # Step 5: Call the OpenAI extraction function
     extracted_data_raw = call_openai_extraction(extraction_prompt, max_tokens=200)
-
     if not extracted_data_raw:
         return
-    
-    # ✅ LOGGING: Debug extracted data
-    logging.info(f"🔍 Extracted Data (Raw AI Response) for Lead {lead_id}: {extracted_data_raw}")
 
-    # Step 6: Clean up markdown wrapping if GPT added code block formatting
+    # clean up ai response    
+    logging.info(f"🔍 Extracted Data (Raw AI Response) for Lead {lead_id}: {extracted_data_raw}")
     cleaned_data = extracted_data_raw.strip()
     if cleaned_data.startswith("```json"):
         cleaned_data = cleaned_data.replace("```json", "").replace("```", "").strip()
     elif cleaned_data.startswith("```"):
         cleaned_data = cleaned_data.replace("```", "").replace("```", "").strip()
-
-    
-    # Step 7: Parse the cleaned JSON into a Python dictionary
     extracted_info = parse_extracted_lead_info(cleaned_data)
     if not extracted_info:
         return
     
+
     property_updated = False
     property_address = extracted_info.get("property_address_interest", "").strip()
     if property_address:
