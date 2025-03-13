@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 STATUS_REQUIRED_FIELDS = {
     "new": ["name", "property_interest"],
-    "interested_in_showing": ["email"],
     "id_verification_requested": ["id_verified"],
     "id_verified": ["scheduled_showing_date"],
     # Add more if needed for later statuses
@@ -17,8 +16,7 @@ STATUS_REQUIRED_FIELDS = {
 MISSING_INFO_QUESTIONS = {
     "name": "Hey! What's your name? 😊",
     "property_interest": "Which property are you interested in? 🏠",
-    "email": "Sounds good! Can you share your best email? We’ll send you a secure link to verify your ID before scheduling.",
-    "id_verified": "Check your email for the link to verify your ID before scheduling.",
+    "id_verified": "To move forward, please send a photo of your ID here. 📸 Once we receive it, we’ll schedule your showing.",
     "scheduled_showing_date": "Great! When would you like to schedule your showing? 📅",
 }
 
@@ -51,8 +49,7 @@ def get_missing_lead_info(db: Session, lead: Lead) -> str:
 
 STATUS_DEFAULT_MESSAGES = {
     "new": "Thanks for reaching out! Would you be interested in scheduling a viewing?",
-    "interested_in_showing": "Perfect, we’ll be sending your ID verification link shortly!",
-    "id_verification_requested": "We're waiting on your ID verification to continue.",
+    "id_verification_requested": "To move forward, please send a photo of your ID here. 📸 Once we receive it, we’ll schedule your showing.",
     "id_verified": "You're all set! Ready to book a showing? Here's my calendar link: **https://calendly.com/fake-link/30min**",
     "showing_scheduled": "Looking forward to your showing! Let me know if any questions come up before then.",
     "showing_completed": "Hope you enjoyed the tour! Would you like the application link to move forward?",

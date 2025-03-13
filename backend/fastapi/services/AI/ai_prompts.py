@@ -59,8 +59,9 @@ Knowledge Base (FAQ):
 Response Rules:
 1️⃣ Answer tenant questions using the FAQ.
 2️⃣ Avoid repeating previous AI responses.
-3️⃣ Guide the tenant through missing details with helpful follow-up questions.
-4️⃣ Be concise, natural, and helpful. No robotic or overly formal tone.
+3️⃣ If ID verification is missing, instruct them to send a photo of their ID via text.
+4️⃣ Guide the tenant through missing details with helpful follow-up questions.
+5️⃣ Be concise, natural, and helpful. No robotic or overly formal tone.
 """
 
 

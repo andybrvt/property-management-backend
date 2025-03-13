@@ -42,34 +42,6 @@ class LeadTestExtractionRequest(BaseModel):
 from uuid import uuid4
 from backend.fastapi.models.property_interest import PropertyInterest
 
-# this will be used to test extraction important informmation from leads coming in
-@router.post("/test/extract", status_code=200)
-def test_lead_extraction(
-    payload: LeadTestExtractionRequest,
-    db: Session = Depends(get_sync_db)
-):
-    conversation_text = payload.conversation_text
-
-    extraction_prompt = get_lead_extraction_prompt(
-        conversation_text=conversation_text,
-        current_status="new",  # or set dynamically if needed
-        latest_ai_message=None
-    )
-
-    logging.info(f"📝 Extracting details from test conversation:\n{conversation_text}")
-    logging.info(f"📜 Extraction Prompt:\n{extraction_prompt}")
-
-    extracted_data_raw = call_openai_extraction(extraction_prompt, max_tokens=300)
-
-    # ✅ Clean the output
-    try:
-        # Remove code block markdown if present
-        cleaned_json_str = extracted_data_raw.strip().strip("```json").strip("```").strip()
-        extracted_data = json.loads(cleaned_json_str)
-    except json.JSONDecodeError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid JSON extracted: {e}")
-
-    return {"extracted_data": extracted_data}
 
 @router.delete("/leads/{lead_id}/reset-property-interest", status_code=200)
 def reset_lead_property_interest(
@@ -95,214 +67,6 @@ def reset_lead_property_interest(
     db.refresh(lead)
 
     return {"message": f"✅ Reset {deleted_count} property interests for Lead {lead_id}."}
-
-@router.post("/test/update-lead/")
-def test_update_lead(
-    lead_id: str,
-    name: str = None,
-    property_id: str = None,
-    id_verified: bool = None,
-    scheduled_showing_date: str = None,
-    db: Session = Depends(get_sync_db)
-):
-    """
-    Test route to manually update a lead's key fields and trigger status updates.
-    """
-    lead = db.query(Lead).filter(Lead.id == lead_id).first()
-    if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found")
-
-    updated = False
-
-    # ✅ Update Name
-    if name and lead.name != name:
-        lead.name = name
-        updated = True
-
-    # ✅ Attach Property Interest
-    if property_id:
-        property_obj = db.query(Property).filter(Property.id == property_id).first()
-        if property_obj:
-            existing_interest = db.query(PropertyInterest).filter_by(
-                lead_id=lead.id, property_id=property_id
-            ).first()
-            if not existing_interest:
-                new_interest = PropertyInterest(lead_id=lead.id, property_id=property_id)
-                db.add(new_interest)
-                lead.uncertain_interest = False  # ✅ Mark as certain interest
-                updated = True
-                logging.info(f"🏠 Attached Property {property_id} to Lead {lead.id}")
-        else:
-            logging.warning(f"❌ Property ID {property_id} not found.")
-
-    # ✅ Update ID Verification Status
-    if id_verified is not None and lead.id_verified != id_verified:
-        lead.id_verified = id_verified
-        updated = True
-
-    # ✅ Update Scheduled Showing Date
-    if scheduled_showing_date:
-        try:
-            from datetime import datetime
-            parsed_date = datetime.strptime(scheduled_showing_date, "%Y-%m-%d")
-            lead.scheduled_showing_date = parsed_date
-            updated = True
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid date format (Use YYYY-MM-DD)")
-
-    if updated:
-        db.commit()
-        db.refresh(lead)
-        update_lead_status_based_on_info(db, lead)  # ✅ Trigger status update
-        logging.info(f"✅ Lead {lead.id} updated successfully.")
-        return {"status": "success", "lead_id": str(lead.id), "message": "Lead updated and status refreshed."}
-    
-    return {"status": "no_changes", "message": "No fields were updated."}
-
-@router.post("/test/update-lead-status/{lead_id}")
-def test_update_lead_status(lead_id: str, db: Session = Depends(get_sync_db)):
-    """
-    Test route to manually trigger lead status updates and verify correct behavior.
-    """
-
-    # ✅ Retrieve the lead by ID
-    lead = db.query(Lead).filter(Lead.id == lead_id).first()
-    if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found")
-
-    # ✅ Log the lead's current state before update
-    old_status = lead.status
-    logging.info(f"🔍 Testing Lead Status Update for Lead {lead_id} (Current: {old_status})")
-
-    # ✅ Run the status update function
-    update_lead_status_based_on_info(db, lead)
-
-    # ✅ Log the updated status
-    new_status = lead.status
-    logging.info(f"✅ Lead {lead_id} status updated from '{old_status}' → '{new_status}'")
-
-    return {
-        "lead_id": str(lead.id),
-        "old_status": old_status,
-        "new_status": new_status,
-        "message": f"Lead status updated successfully: {new_status}"
-    }
-
-# Test response 
-@router.post("/test-missing-info")
-def test_missing_info(db: Session = Depends(get_sync_db)):
-    """Test missing info checker for a fake lead."""
-
-    # Create fake lead that should trigger the property suggestion
-    fake_lead = Lead(
-        id=uuid4(),
-        status="new",
-        name="Andy",
-        email=None,
-        property_interest=[],           # 🛑 No property interests
-        uncertain_interest=True,        # 🟡 Make sure this is set
-        interest_city="Phoenix"         # Optional: to filter top properties
-    )
-
-    # ⛔️ Comment out or remove fake property interest
-    # fake_property_interest = PropertyInterest(
-    #     id=uuid4(),
-    #     lead_id=fake_lead.id,
-    #     property_id=uuid4(),
-    #     status="interested"
-    # )
-    # fake_lead.property_interest.append(fake_property_interest)
-
-    question = get_missing_lead_info(db, fake_lead)
-
-    return {
-        "lead_status": fake_lead.status,
-        "missing_info_question": question
-    }
-
- 
-    
-
-# Test extraction for lead
-@router.post("/test-full-extraction")
-def test_full_extraction(request: LeadTestExtractionRequest, db: Session = Depends(get_sync_db)):
-    """Test extraction, lead update, property matching, and status update from sample conversation text."""
-    conversation_text = request.conversation_text
-
-    # ✅ Create a real lead in DB for testing (optional) or use an in-memory fake
-    fake_lead = Lead(
-        phone="5555555555",
-        status="new",
-        id_verified=True,
-    )
-    db.add(fake_lead)
-    db.commit()
-    db.refresh(fake_lead)
-
-    # ✅ Generate the extraction prompt
-    extraction_prompt = get_lead_extraction_prompt(conversation_text, current_status=fake_lead.status)
-
-    logger.info(f"📜 Extraction Prompt:\n{extraction_prompt}")
-
-    extracted_data_raw = call_openai_extraction(extraction_prompt, max_tokens=300)
-
-    logger.info(f"🔍 Raw GPT Output:\n{extracted_data_raw}")
-
-    # 🧹 Clean GPT markdown if needed
-    cleaned_data = extracted_data_raw.strip()
-    if cleaned_data.startswith("```json"):
-        cleaned_data = cleaned_data.replace("```json", "").replace("```", "").strip()
-    elif cleaned_data.startswith("```"):
-        cleaned_data = cleaned_data.replace("```", "").replace("```", "").strip()
-
-    try:
-        extracted_data = json.loads(cleaned_data)
-    except json.JSONDecodeError:
-        logger.error(f"❌ JSON parsing failed. Cleaned output:\n{cleaned_data}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"❌ Failed to parse JSON from GPT response. Cleaned output: {cleaned_data}"
-        )
-
-    logger.info(f"✅ Parsed Extracted Data:\n{extracted_data}")
-
-
-    # ✅ Extract property address and attempt property match/attach
-    property_address = extracted_data.get("property_address_interest")
-    property_attached = handle_property_interest_from_extraction(db, fake_lead, property_address)
-
-    db.refresh(fake_lead)
-
-    # ✅ Run status updater
-    update_lead_status_based_on_info(db, fake_lead)
-    db.commit()
-
-    # ✅ Get attached properties to confirm
-    attached_properties = [
-        {
-            "property_id": pi.property_id,
-            "status": pi.status
-        }
-        for pi in fake_lead.property_interest
-    ]
-
-    # ✅ Return full test result
-    return {
-        "prompt": extraction_prompt,
-        "extracted_data": extracted_data,
-        "final_lead_status": fake_lead.status,
-        "property_address_interest": property_address,
-        "property_attached": property_attached,
-        "attached_properties": attached_properties,
-        "lead_info": {
-            "name": fake_lead.name,
-            "email": fake_lead.email,
-            "move_in_date": str(fake_lead.move_in_date) if fake_lead.move_in_date else None,
-            "id_verified": fake_lead.id_verified,
-        }
-    }
-
-  
 
 
 @router.post("/start")
@@ -473,3 +237,240 @@ def reset_lead(phone_number: str, db: Session = Depends(get_sync_db)):
     logger.info(f"🗑️ Lead {lead.id} deleted successfully")
 
     return {"message": f"Lead {phone_number} and all associated messages deleted."}
+
+
+# TEST FUNCTIONS
+# this will be used to test extraction important informmation from leads coming in
+@router.post("/test/extract", status_code=200)
+def test_lead_extraction(
+    payload: LeadTestExtractionRequest,
+    db: Session = Depends(get_sync_db)
+):
+    conversation_text = payload.conversation_text
+
+    extraction_prompt = get_lead_extraction_prompt(
+        conversation_text=conversation_text,
+        current_status="new",  # or set dynamically if needed
+        latest_ai_message=None
+    )
+
+    logging.info(f"📝 Extracting details from test conversation:\n{conversation_text}")
+    logging.info(f"📜 Extraction Prompt:\n{extraction_prompt}")
+
+    extracted_data_raw = call_openai_extraction(extraction_prompt, max_tokens=300)
+
+    # ✅ Clean the output
+    try:
+        # Remove code block markdown if present
+        cleaned_json_str = extracted_data_raw.strip().strip("```json").strip("```").strip()
+        extracted_data = json.loads(cleaned_json_str)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON extracted: {e}")
+
+    return {"extracted_data": extracted_data}
+
+@router.post("/test/update-lead/")
+def test_update_lead(
+    lead_id: str,
+    name: str = None,
+    property_id: str = None,
+    id_verified: bool = None,
+    scheduled_showing_date: str = None,
+    db: Session = Depends(get_sync_db)
+):
+    """
+    Test route to manually update a lead's key fields and trigger status updates.
+    """
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    updated = False
+
+    # ✅ Update Name
+    if name and lead.name != name:
+        lead.name = name
+        updated = True
+
+    # ✅ Attach Property Interest
+    if property_id:
+        property_obj = db.query(Property).filter(Property.id == property_id).first()
+        if property_obj:
+            existing_interest = db.query(PropertyInterest).filter_by(
+                lead_id=lead.id, property_id=property_id
+            ).first()
+            if not existing_interest:
+                new_interest = PropertyInterest(lead_id=lead.id, property_id=property_id)
+                db.add(new_interest)
+                lead.uncertain_interest = False  # ✅ Mark as certain interest
+                updated = True
+                logging.info(f"🏠 Attached Property {property_id} to Lead {lead.id}")
+        else:
+            logging.warning(f"❌ Property ID {property_id} not found.")
+
+    # ✅ Update ID Verification Status
+    if id_verified is not None and lead.id_verified != id_verified:
+        lead.id_verified = id_verified
+        updated = True
+
+    # ✅ Update Scheduled Showing Date
+    if scheduled_showing_date:
+        try:
+            from datetime import datetime
+            parsed_date = datetime.strptime(scheduled_showing_date, "%Y-%m-%d")
+            lead.scheduled_showing_date = parsed_date
+            updated = True
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format (Use YYYY-MM-DD)")
+
+    if updated:
+        db.commit()
+        db.refresh(lead)
+        update_lead_status_based_on_info(db, lead)  # ✅ Trigger status update
+        logging.info(f"✅ Lead {lead.id} updated successfully.")
+        return {"status": "success", "lead_id": str(lead.id), "message": "Lead updated and status refreshed."}
+    
+    return {"status": "no_changes", "message": "No fields were updated."}
+
+@router.post("/test/update-lead-status/{lead_id}")
+def test_update_lead_status(lead_id: str, db: Session = Depends(get_sync_db)):
+    """
+    Test route to manually trigger lead status updates and verify correct behavior.
+    """
+
+    # ✅ Retrieve the lead by ID
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    # ✅ Log the lead's current state before update
+    old_status = lead.status
+    logging.info(f"🔍 Testing Lead Status Update for Lead {lead_id} (Current: {old_status})")
+
+    # ✅ Run the status update function
+    update_lead_status_based_on_info(db, lead)
+
+    # ✅ Log the updated status
+    new_status = lead.status
+    logging.info(f"✅ Lead {lead_id} status updated from '{old_status}' → '{new_status}'")
+
+    return {
+        "lead_id": str(lead.id),
+        "old_status": old_status,
+        "new_status": new_status,
+        "message": f"Lead status updated successfully: {new_status}"
+    }
+
+# Test response 
+@router.post("/test-missing-info")
+def test_missing_info(db: Session = Depends(get_sync_db)):
+    """Test missing info checker for a fake lead."""
+
+    # Create fake lead that should trigger the property suggestion
+    fake_lead = Lead(
+        id=uuid4(),
+        status="new",
+        name="Andy",
+        email=None,
+        property_interest=[],           # 🛑 No property interests
+        uncertain_interest=True,        # 🟡 Make sure this is set
+        interest_city="Phoenix"         # Optional: to filter top properties
+    )
+
+    # ⛔️ Comment out or remove fake property interest
+    # fake_property_interest = PropertyInterest(
+    #     id=uuid4(),
+    #     lead_id=fake_lead.id,
+    #     property_id=uuid4(),
+    #     status="interested"
+    # )
+    # fake_lead.property_interest.append(fake_property_interest)
+
+    question = get_missing_lead_info(db, fake_lead)
+
+    return {
+        "lead_status": fake_lead.status,
+        "missing_info_question": question
+    }
+
+ # Test extraction for lead
+@router.post("/test-full-extraction")
+def test_full_extraction(request: LeadTestExtractionRequest, db: Session = Depends(get_sync_db)):
+    """Test extraction, lead update, property matching, and status update from sample conversation text."""
+    conversation_text = request.conversation_text
+
+    # ✅ Create a real lead in DB for testing (optional) or use an in-memory fake
+    fake_lead = Lead(
+        phone="5555555555",
+        status="new",
+        id_verified=True,
+    )
+    db.add(fake_lead)
+    db.commit()
+    db.refresh(fake_lead)
+
+    # ✅ Generate the extraction prompt
+    extraction_prompt = get_lead_extraction_prompt(conversation_text, current_status=fake_lead.status)
+
+    logger.info(f"📜 Extraction Prompt:\n{extraction_prompt}")
+
+    extracted_data_raw = call_openai_extraction(extraction_prompt, max_tokens=300)
+
+    logger.info(f"🔍 Raw GPT Output:\n{extracted_data_raw}")
+
+    # 🧹 Clean GPT markdown if needed
+    cleaned_data = extracted_data_raw.strip()
+    if cleaned_data.startswith("```json"):
+        cleaned_data = cleaned_data.replace("```json", "").replace("```", "").strip()
+    elif cleaned_data.startswith("```"):
+        cleaned_data = cleaned_data.replace("```", "").replace("```", "").strip()
+
+    try:
+        extracted_data = json.loads(cleaned_data)
+    except json.JSONDecodeError:
+        logger.error(f"❌ JSON parsing failed. Cleaned output:\n{cleaned_data}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"❌ Failed to parse JSON from GPT response. Cleaned output: {cleaned_data}"
+        )
+
+    logger.info(f"✅ Parsed Extracted Data:\n{extracted_data}")
+
+
+    # ✅ Extract property address and attempt property match/attach
+    property_address = extracted_data.get("property_address_interest")
+    property_attached = handle_property_interest_from_extraction(db, fake_lead, property_address)
+
+    db.refresh(fake_lead)
+
+    # ✅ Run status updater
+    update_lead_status_based_on_info(db, fake_lead)
+    db.commit()
+
+    # ✅ Get attached properties to confirm
+    attached_properties = [
+        {
+            "property_id": pi.property_id,
+            "status": pi.status
+        }
+        for pi in fake_lead.property_interest
+    ]
+
+    # ✅ Return full test result
+    return {
+        "prompt": extraction_prompt,
+        "extracted_data": extracted_data,
+        "final_lead_status": fake_lead.status,
+        "property_address_interest": property_address,
+        "property_attached": property_attached,
+        "attached_properties": attached_properties,
+        "lead_info": {
+            "name": fake_lead.name,
+            "email": fake_lead.email,
+            "move_in_date": str(fake_lead.move_in_date) if fake_lead.move_in_date else None,
+            "id_verified": fake_lead.id_verified,
+        }
+    }
+
+  
+    

@@ -24,6 +24,40 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+
+
+
+# Create a message
+@router.post("/messages/", response_model=MessageSchema, status_code=status.HTTP_201_CREATED)
+def create_message_endpoint(message_data: MessageCreate, db: Session = Depends(get_sync_db)):
+    return create_message(db, message_data.model_dump())  # ✅ Uses direct function call
+
+# Get all messages
+@router.get("/messages/", response_model=List[MessageSchema], status_code=status.HTTP_200_OK)
+def get_messages(skip: int = 0, limit: int = 30, db: Session = Depends(get_sync_db)):
+    return get_all_messages(db, skip, limit)  # ✅ Uses direct function call
+
+# Get a single message
+@router.get("/messages/{message_id}", response_model=MessageSchema, status_code=status.HTTP_200_OK)
+def get_message_endpoint(message_id: UUID, db: Session = Depends(get_sync_db)):
+    message = get_message(db, message_id)
+    if message is None:
+        raise HTTPException(status_code=404, detail="Message not found")
+    return message
+
+# Update message
+@router.put("/messages/{message_id}", response_model=MessageSchema, status_code=status.HTTP_200_OK)
+def update_message_endpoint(message_id: UUID, message_data: MessageBase, db: Session = Depends(get_sync_db)):
+    return update_message(db, message_id, message_data.model_dump())
+
+# Delete message
+@router.delete("/messages/{message_id}", response_model=MessageSchema, status_code=status.HTTP_200_OK)
+def delete_message_endpoint(message_id: UUID, db: Session = Depends(get_sync_db)):
+    return delete_message(db, message_id)
+
+
+
+# TESTS 
 @router.get("/test-ai-message/{lead_id}")
 def test_ai_message_build(
     lead_id: UUID,
@@ -44,7 +78,7 @@ def test_ai_message_build(
     )
 
     # Get missing info question
-    missing_info_question = get_missing_lead_info(lead)
+    missing_info_question = get_missing_lead_info(db, lead)
 
     # Build full message payload
     messages = build_ai_message_history(
@@ -93,32 +127,3 @@ def test_send_verification_email(
     send_verification_email(lead)
 
     return {"message": f"✅ Verification email sent to {lead.email}"}
-
-
-# Create a message
-@router.post("/messages/", response_model=MessageSchema, status_code=status.HTTP_201_CREATED)
-def create_message_endpoint(message_data: MessageCreate, db: Session = Depends(get_sync_db)):
-    return create_message(db, message_data.model_dump())  # ✅ Uses direct function call
-
-# Get all messages
-@router.get("/messages/", response_model=List[MessageSchema], status_code=status.HTTP_200_OK)
-def get_messages(skip: int = 0, limit: int = 30, db: Session = Depends(get_sync_db)):
-    return get_all_messages(db, skip, limit)  # ✅ Uses direct function call
-
-# Get a single message
-@router.get("/messages/{message_id}", response_model=MessageSchema, status_code=status.HTTP_200_OK)
-def get_message_endpoint(message_id: UUID, db: Session = Depends(get_sync_db)):
-    message = get_message(db, message_id)
-    if message is None:
-        raise HTTPException(status_code=404, detail="Message not found")
-    return message
-
-# Update message
-@router.put("/messages/{message_id}", response_model=MessageSchema, status_code=status.HTTP_200_OK)
-def update_message_endpoint(message_id: UUID, message_data: MessageBase, db: Session = Depends(get_sync_db)):
-    return update_message(db, message_id, message_data.model_dump())
-
-# Delete message
-@router.delete("/messages/{message_id}", response_model=MessageSchema, status_code=status.HTTP_200_OK)
-def delete_message_endpoint(message_id: UUID, db: Session = Depends(get_sync_db)):
-    return delete_message(db, message_id)

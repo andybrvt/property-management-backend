@@ -45,6 +45,8 @@ class LeadSchema(LeadBase):
     driver_license_uploaded_at: Optional[datetime] = None
     id_verified: bool
     id_verification_date: Optional[datetime] = None
+    scheduled_showing_date: Optional[datetime] = None  # ✅ Added this field
+
 
 
     class Config:
