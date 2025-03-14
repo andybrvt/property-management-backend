@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# this is to determine what fields are required for the current status to move forward
 STATUS_REQUIRED_FIELDS = {
     "new": ["name", "property_interest"],
     "id_verification_requested": ["id_verified"],
@@ -13,17 +14,33 @@ STATUS_REQUIRED_FIELDS = {
     # Add more if needed for later statuses
 }
 
+# 🔹 Missing Info Questions → Now Returns Structured Instructions
 MISSING_INFO_QUESTIONS = {
-    "name": "Hey! What's your name? 😊",
-    "property_interest": "Which property are you interested in? 🏠",
-    "id_verified": "To move forward, please send a photo of your ID here. 📸 Once we receive it, we’ll schedule your showing.",
-    "scheduled_showing_date": "Great! When would you like to schedule your showing? 📅",
+    "name": "💡 The tenant has not provided their name yet. Politely ask for it in a friendly way. 😊",
+    "property_interest": "💡 The tenant has not specified a property. Ask them which property they’re interested in. 🏠 If they seem unsure, suggest available options.",
+    "id_verified": "💡 The tenant has not verified their ID yet. Ask them to send a photo of their ID to proceed. 📸",
+    "scheduled_showing_date": "💡 The tenant has not scheduled a showing yet. Ask them when they would like to schedule it. 📅",
 }
+
+# 🔹 Unique Handling for Showing Scheduled
+def get_showing_scheduled_instructions(lead: Lead) -> str:
+    return f"""
+    The tenant has a showing scheduled for **{lead.scheduled_showing_date.strftime('%A, %B %d at %I:%M %p')}**. 
+
+    💡 **Your Goal:**
+    1️⃣ **Confirm their appointment** if they ask.  
+    2️⃣ **Help them reschedule or cancel** if needed.  
+    3️⃣ **Provide property details** if they have questions.  
+    4️⃣ **Be concise and helpful.**  
+    """
 
 def get_missing_lead_info(db: Session, lead: Lead) -> str:
     """
     Dynamically checks what's missing for the current status and asks for it.
     """
+
+    if lead.status == "showing_scheduled":
+        return get_showing_scheduled_instructions(lead)
 
     required_fields = STATUS_REQUIRED_FIELDS.get(lead.status, [])
 
