@@ -65,7 +65,7 @@ Response Rules:
 """
 
 
-def build_ai_message_history(conversation_history, missing_info_question=None):
+def build_ai_message_history(conversation_history, missing_info_instruction=None):
     system_prompt = """
 You are a professional, friendly leasing assistant responding to tenant inquiries via SMS.
 
@@ -86,8 +86,8 @@ Response Rules:
 4️⃣ Be concise, natural, and helpful.
 """
 
-    if missing_info_question:
-        system_prompt += f"\n\n💡 Your current goal: Ask the tenant: \"{missing_info_question}\""
+    if missing_info_instruction:
+        system_prompt += f"\n\n🔹 AI Instruction for Next Step:\n{missing_info_instruction}"
 
     messages = [{"role": "system", "content": system_prompt}]
 
