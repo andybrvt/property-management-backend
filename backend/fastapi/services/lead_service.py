@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from backend.fastapi.crud.lead import get_lead_by_phone, create_lead
 from backend.fastapi.services.sms_service import format_phone_number
 import logging
+from datetime import datetime
 from backend.fastapi.constants.lead_statuses import LEAD_STATUSES
 from backend.fastapi.models.lead import Lead
 from backend.fastapi.services.email_service import send_verification_email
@@ -105,3 +106,50 @@ def update_lead_status_based_on_info(db: Session, lead: Lead):
 
             break
 
+
+def update_lead_with_mms(db: Session, lead: Lead, s3_url: str):
+    """
+    Updates a lead with the uploaded driver's license S3 URL and timestamp.
+
+    Parameters:
+    - db (Session): SQLAlchemy DB session.
+    - lead (Lead): Lead object to update.
+    - s3_url (str): The uploaded image URL.
+
+    Returns:
+    - None
+    """
+    try:
+        lead.driver_license_url = s3_url
+        lead.driver_license_uploaded_at = datetime.utcnow()
+        db.commit()
+        logger.info(f"✅ Updated lead {lead.id} with driver license: {s3_url}")
+        update_lead_id_verified(db, lead, is_verified=True)
+
+
+    except Exception as e:
+        logger.error(f"❌ Error updating Lead {lead.id} with MMS: {e}")
+
+
+def update_lead_id_verified(db: Session, lead: Lead, is_verified: bool = True):
+    """
+    Updates the lead's ID verification status and changes the lead's status to "id_verified".
+
+    Parameters:
+    - db (Session): SQLAlchemy DB session.
+    - lead (Lead): Lead object to update.
+    - is_verified (bool): Whether the ID is verified (default: True).
+
+    Returns:
+    - None
+    """
+    try:
+        lead.id_verified = is_verified
+        lead.id_verification_date = datetime.utcnow() if is_verified else None
+        lead.status = "id_verified" 
+
+        db.commit()
+        logger.info(f"✅ Lead {lead.id} ID verification updated: {is_verified}, Status set to: {lead.status}")
+
+    except Exception as e:
+        logger.error(f"❌ Error updating Lead {lead.id} ID verification: {e}")

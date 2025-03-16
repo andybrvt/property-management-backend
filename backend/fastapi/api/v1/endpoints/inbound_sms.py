@@ -15,6 +15,9 @@ from backend.fastapi.models.message import Message
 import asyncio
 from backend.fastapi.services.sms.sms_parser import parse_incoming_sms
 from backend.fastapi.services.message.message_checker import wait_and_check_new_messages
+from backend.fastapi.services.mms.mms_ultils import save_twilio_image_to_s3
+from backend.fastapi.services.lead_service import update_lead_with_mms
+
 
 router = APIRouter()
 
@@ -27,8 +30,12 @@ logger = logging.getLogger(__name__)
 async def receive_sms(request: Request, db: Session = Depends(get_sync_db)):
     """Handles incoming SMS messages from Twilio. If the sender is not in the lead database, create a new lead."""
 
-    from_number, message_body = await parse_incoming_sms(request)
-    if not from_number or not message_body:
+    from_number, message_body, media_url = await parse_incoming_sms(request)
+
+    # ✅ Log the incoming message
+    logger.info(f"📩 Incoming message from {from_number}: {media_url}")
+
+    if not from_number:
         return {"status": "error", "message": "Failed to process request"}
    
      # ✅ Find or create lead (now properly unpacking the return value)
@@ -39,9 +46,23 @@ async def receive_sms(request: Request, db: Session = Depends(get_sync_db)):
         return {"status": "error", "message": error}
 
     is_new_lead = lead.status == "new"
-    
     logger.info(f"🆔 Lead found/created: {lead.id} | New Lead: {is_new_lead}")
 
+    # ✅ Handle MMS (Image Upload)
+    if media_url:
+        filename = f"{lead.id}_driver_license.jpg"
+        s3_url = save_twilio_image_to_s3(media_url, filename)
+        
+        if s3_url:
+            update_lead_with_mms(db, lead, s3_url)
+            return {"status": "success", "message": "MMS processed", "media_url": s3_url}
+        else:
+            return {"status": "error", "message": "Failed to upload image"}
+
+
+    if not message_body:
+        return {"status": "error", "message": "Failed to process request"}
+   
     # ✅ Find or create a message session
     session_id = get_or_create_session(db, lead.id)
 

@@ -18,6 +18,8 @@ app = FastAPI()
 
 
 #to run app use: python -m backend.fastapi.main
+#ngrok: ngrok http 3000
+
 
 # Frontend
 templates = Jinja2Templates(directory="frontend/login/templates")

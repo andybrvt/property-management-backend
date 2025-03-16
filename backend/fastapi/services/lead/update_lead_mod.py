@@ -16,6 +16,7 @@ def update_lead_with_extracted_info(db: Session, lead: Lead, extracted_info: dic
 
     if name := extracted_info.get("name"):
         if not lead.name:
+            logging.info(f"🔍 Updating Lead {lead.id} with name: {name}")
             lead.name = name.strip()
             updated = True
 
@@ -44,13 +45,6 @@ def update_lead_with_extracted_info(db: Session, lead: Lead, extracted_info: dic
         if rented_before_str.strip():
             lead.rented_before_archived = rented_before_str.lower() == "true"
             updated = True
-
-    if email_value := extracted_info.get("email", "").strip():
-        if is_valid_email(email_value):
-            lead.email = email_value
-            updated = True
-        else:
-            logging.warning(f"⚠️ Skipping invalid or empty email: '{email_value}'")
 
     if updated:
         db.commit()

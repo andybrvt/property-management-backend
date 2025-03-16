@@ -88,6 +88,7 @@ def extract_lead_details_from_messages(db: Session, lead_id: int, session_id: st
     if not lead:
         return
 
+    logging.info(f"🔍 Extracted Info for Lead {lead_id}: {extracted_info}")
 
     # Step 9: Update the lead with the extracted details
     lead_updated = update_lead_with_extracted_info(db, lead, extracted_info)  # Track if we make updates
