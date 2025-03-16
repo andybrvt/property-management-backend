@@ -19,7 +19,6 @@ MISSING_INFO_QUESTIONS = {
     "name": "💡 The tenant has not provided their name yet. Politely ask for it in a friendly way. 😊",
     "property_interest": "💡 The tenant has not specified a property. Ask them which property they’re interested in. 🏠 If they seem unsure, suggest available options.",
     "id_verified": "💡 The tenant has not verified their ID yet. Ask them to send a photo of their ID to proceed. 📸",
-    "scheduled_showing_date": "💡 The tenant has not scheduled a showing yet. Ask them when they would like to schedule it. 📅",
 }
 
 # 🔹 Unique Handling for Showing Scheduled
@@ -56,6 +55,23 @@ def get_missing_lead_info(db: Session, lead: Lead) -> str:
             else:
                 logger.info(f"📌 Missing Info: {field} for Lead {lead.id}")
                 return MISSING_INFO_QUESTIONS[field]
+            
+        elif lead.status == "id_verified":
+            # ✅ Send the Calendly link instead of asking for a showing date
+            # ✅ Fetch the property from the lead's property interest
+            property_obj = lead.property_interest[0].property if lead.property_interest else None
+
+            calendly_link = property_obj.calendly_link if property_obj and property_obj.calendly_link else "https://calendly.com/default-link"
+            
+            return (
+                f"The tenant has successfully verified their ID. 🎉\n\n"
+                "💡 **Next Step:** Provide them with the Calendly link to schedule a showing.\n"
+                "1️⃣ Confirm that their ID verification is complete.\n"
+                f"2️⃣ Send them the Calendly link: {calendly_link} 📅\n"
+                "3️⃣ Offer to answer any questions they may have before their scheduled tour.\n\n"
+                "Ensure the response is friendly and professional, guiding them through the process naturally."
+            )
+                    
         elif value in (None, "", False):
             logger.info(f"📌 Missing Info: {field} for Lead {lead.id}")
             return MISSING_INFO_QUESTIONS[field]
