@@ -20,6 +20,7 @@ class Message(Base):
     sent_at = Column(DateTime, nullable=True, default=lambda: datetime.now(timezone.utc))  # Ensure sent_at is never None
     is_ai_generated = Column(Boolean, nullable=True, default=False)  # ✅ New field
     session_id = Column(UUID(as_uuid=True), nullable=True)  # ✅ New field for grouping messages
+    image_url = Column(String, nullable=True)  # ✅ New field for storing image URL
 
 
 

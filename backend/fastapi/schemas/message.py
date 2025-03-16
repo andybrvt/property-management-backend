@@ -11,6 +11,9 @@ class MessageBase(BaseModel):
     twilio_sid: Optional[str] = None
     is_ai_generated: Optional[bool] = False  # ✅ Added this field
     session_id: Optional[UUID] = None  # ✅ NEW FIELD: Tracks conversation sessions
+    image_url: Optional[str] = None  # ✅ NEW FIELD: Stores image URL if MMS is received
+
+
 
 class MessageCreate(MessageBase):
     lead_id: Optional[UUID] = None  # Allow lead_id to be missing if not required

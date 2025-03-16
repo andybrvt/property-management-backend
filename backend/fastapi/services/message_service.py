@@ -39,16 +39,26 @@ def save_ai_message(db: Session, lead_id: int, message_text: str, session_id: st
 
     return create_message(db, message_data)  # ✅ Uses `create_message()` to store message
 
-def store_message_log(db: Session, phone_number: str, direction: str, message: str, lead_id: UUID = None, session_id: UUID = None):
+def store_message_log(
+        db: Session, 
+        phone_number: str, 
+        direction: str, 
+        message: str, 
+        lead_id: UUID = None, 
+        session_id: UUID = None,
+        image_url: str = None
+    ):
     """Logs a message sent or received into the Messages table with session tracking and lead_id."""
     
     msg_entry = Message(
         phone_number=phone_number,
         direction=direction,
-        content=message,
+        content=message if message else "[IMAGE UPLOADED]",  # ✅ Handle cases where there's only an image
         lead_id=lead_id,  # ✅ Ensure lead_id is stored properly
         session_id=session_id,  # ✅ Store session ID
-        sent_at=datetime.now(timezone.utc)  # ✅ Ensure timestamp is stored
+        sent_at=datetime.now(timezone.utc),  # ✅ Ensure timestamp is stored
+        image_url=image_url  # ✅ Store the image URL if provided
+
     )
     
     db.add(msg_entry)

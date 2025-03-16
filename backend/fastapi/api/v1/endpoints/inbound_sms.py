@@ -48,6 +48,9 @@ async def receive_sms(request: Request, db: Session = Depends(get_sync_db)):
     is_new_lead = lead.status == "new"
     logger.info(f"🆔 Lead found/created: {lead.id} | New Lead: {is_new_lead}")
 
+    # ✅ Find or create a message session
+    session_id = get_or_create_session(db, lead.id)
+
     # ✅ Handle MMS (Image Upload)
     if media_url:
         filename = f"{lead.id}_driver_license.jpg"
@@ -55,19 +58,16 @@ async def receive_sms(request: Request, db: Session = Depends(get_sync_db)):
         
         if s3_url:
             update_lead_with_mms(db, lead, s3_url)
-            return {"status": "success", "message": "MMS processed", "media_url": s3_url}
-        else:
-            return {"status": "error", "message": "Failed to upload image"}
+
+            # ✅ Store MMS as a message for AI context
+            store_message_log(db, from_number, "incoming", "[IMAGE UPLOADED]", lead_id=lead.id, session_id=session_id, image_url=s3_url)
+
+            logger.info(f"📸 Image message saved: {s3_url}")
 
 
-    if not message_body:
-        return {"status": "error", "message": "Failed to process request"}
-   
-    # ✅ Find or create a message session
-    session_id = get_or_create_session(db, lead.id)
-
-    # ✅ Store the received message with `session_id`
-    store_message_log(db, from_number, "incoming", message_body, lead_id=lead.id, session_id=session_id)
+    # ✅ Store text message (if present)
+    if message_body:
+        store_message_log(db, from_number, "incoming", message_body, lead_id=lead.id, session_id=session_id)
 
     # this is to see if they send muttiple messsages at once and group them together 
     if await wait_and_check_new_messages(db, lead.id):
