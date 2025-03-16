@@ -10,6 +10,7 @@ from backend.fastapi.services import property_service  # ✅ make sure this impo
 from backend.fastapi.schemas.property import PropertyDropdownResponse
 from backend.fastapi.models.property import Property
 from fastapi.responses import JSONResponse
+from backend.fastapi.crud.property import get_property_by_id, update_property_crud
 
 router = APIRouter()
 
@@ -59,3 +60,25 @@ def get_all_properties(db: Session = Depends(get_sync_db)):
     
     # ✅ Ensure ID is returned as a string
     return [PropertyDropdownResponse(id=str(p.id), address=p.address) for p in properties]
+
+@router.put("/properties/{property_id}/calendly", response_model=PropertyResponse)
+def update_property_calendly_link(
+    property_id: UUID, 
+    calendly_link: str, 
+    db: Session = Depends(get_sync_db)
+):
+    """Update the Calendly link for a specific property."""
+
+    # ✅ Ensure property exists before updating
+    property_obj = get_property_by_id(db, property_id)
+
+    if not property_obj:
+        raise HTTPException(status_code=404, detail="Property not found")
+
+    # ✅ Pass `calendly_link` inside a PropertyUpdate instance
+    property_update_data = PropertyUpdate(calendly_link=calendly_link)
+
+    # ✅ Call update_property with correct data
+    updated_property = update_property_crud(db, property_id, property_update_data)
+
+    return updated_property

@@ -29,18 +29,27 @@ def get_all_properties(db: Session, skip: int = 0, limit: int = 10):
     return db.query(Property).offset(skip).limit(limit).all()
 
 
-def update_property(db: Session, property_id: UUID, property_data: PropertyUpdate):
+def update_property_crud(db: Session, property_id: UUID, property_data: PropertyUpdate):
     """Update an existing property."""
-    property_obj = get_property_by_id(db, property_id)  # Fetch existing property
-    update_data = property_data.model_dump(exclude_unset=True)  # Exclude fields not provided
+    
+    # ✅ Fetch the existing property from DB
+    property_obj = get_property_by_id(db, property_id)
 
+    if not property_obj:
+        raise HTTPException(status_code=404, detail="Property not found")
+
+    # ✅ Convert Pydantic model to a dictionary and exclude unset fields
+    update_data = property_data.model_dump(exclude_unset=True)
+
+    # ✅ Apply updates to the SQLAlchemy model
     for key, value in update_data.items():
         setattr(property_obj, key, value)
 
+    # ✅ Commit updates
     db.commit()
     db.refresh(property_obj)
-    return property_obj
 
+    return property_obj  # ✅ Return the updated property model
 
 def delete_property(db: Session, property_id: UUID):
     """Delete a property by its ID."""

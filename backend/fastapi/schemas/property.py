@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, UUID4, constr
+from pydantic import BaseModel, Field, UUID4, constr, HttpUrl
 from datetime import datetime
 from typing import Optional
 
@@ -13,6 +13,7 @@ class PropertyBase(BaseModel):
     sqft: Optional[int] = None
     rent_price: int
     status: str = Field(default="available")  # Can be available, occupied, under maintenance
+    calendly_link: Optional[str] = None  # ✅ Add this field
 
 
 class PropertyCreate(PropertyBase):
@@ -29,7 +30,10 @@ class PropertyUpdate(BaseModel):
     sqft: Optional[int] = None
     rent_price: Optional[int] = None
     status: Optional[str] = None
+    calendly_link: Optional[str] = None  # ✅ Add this field
 
+    class Config:
+            from_attributes = True  # ✅ Ensure Pydantic can map this to a SQLAlchemy model
 
 class PropertyResponse(PropertyBase):
     id: UUID4
