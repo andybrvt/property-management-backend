@@ -27,10 +27,8 @@ def get_showing_scheduled_instructions(lead: Lead) -> str:
     The tenant has a showing scheduled for **{lead.scheduled_showing_date.strftime('%A, %B %d at %I:%M %p')}**. 
 
     💡 **Your Goal:**
-    1️⃣ **Confirm their appointment** if they ask.  
-    2️⃣ **Help them reschedule or cancel** if needed.  
-    3️⃣ **Provide property details** if they have questions.  
-    4️⃣ **Be concise and helpful.**  
+    1️⃣ Tell them that you saw the showing was scheduled. 
+    2️⃣ and pretty much tell them to reach out if they have any questions. 
     """
 
 def get_missing_lead_info(db: Session, lead: Lead) -> str:
@@ -66,7 +64,7 @@ def get_missing_lead_info(db: Session, lead: Lead) -> str:
             return (
                 f"The tenant has successfully verified their ID. 🎉\n\n"
                 "💡 **Next Step:** Provide them with the Calendly link to schedule a showing.\n"
-                "1️⃣ Confirm that their ID verification is complete.\n"
+                "1️⃣ Confirm that their ID verification is complete. Say that we verified it for them.\n"
                 f"2️⃣ Send them the Calendly link: {calendly_link} 📅\n"
                 "3️⃣ Offer to answer any questions they may have before their scheduled tour.\n\n"
                 "Ensure the response is friendly and professional, guiding them through the process naturally."
