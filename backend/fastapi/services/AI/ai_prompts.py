@@ -1,4 +1,7 @@
 from datetime import datetime
+from backend.fastapi.services.property_service import get_property_details
+from backend.fastapi.models.lead import Lead
+from sqlalchemy.orm import Session
 
 def get_lead_extraction_prompt(conversation_text: str, current_status: str = "new", latest_ai_message: str = None) -> str:
     current_date = datetime.now().strftime("%Y-%m-%d")
@@ -65,7 +68,7 @@ Response Rules:
 """
 
 
-def build_ai_message_history(conversation_history, missing_info_instruction=None):
+def build_ai_message_history(conversation_history, missing_info_instruction=None, lead: Lead = None, db: Session = None):
     system_prompt = """
 You are a professional, friendly leasing assistant responding to tenant inquiries via SMS.
 
@@ -81,6 +84,16 @@ You are a professional, friendly leasing assistant responding to tenant inquirie
 - If the tenant **already has a showing scheduled**, **DO NOT mention sending a link or Calendly.**
 - Just tell them that you saw the showing was scheduled. 
 - and pretty much tell them to reach out if they have any questions. 
+
+"""
+
+    # ✅ Retrieve and inject property details
+    if lead and db:
+        property_details = get_property_details(db, lead)
+        if property_details:
+            system_prompt += f"\n\n{property_details}"
+
+    system_prompt += """
 
 Knowledge Base (FAQ):
 - What is the rent? Rent varies by property. Let me know which one you're interested in.

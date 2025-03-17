@@ -145,3 +145,35 @@ def get_calendly_link(db: Session, property_id: UUID) -> str:
     if property and property.calendly_link:
         return property.calendly_link
     return "https://calendly.com/default"
+
+
+def get_property_details(db: Session, lead: Lead) -> str:
+    """
+    Retrieves and formats property details for a lead's interested property.
+    """
+    if not lead:
+        return ""
+
+    property_interest = db.query(PropertyInterest).filter(PropertyInterest.lead_id == lead.id).first()
+    if not property_interest:
+        return ""
+
+    property = db.query(Property).filter(Property.id == property_interest.property_id).first()
+    if not property:
+        return ""
+
+    return f"""
+🏡 **Property Details:**
+- **Address:** {property.address}, {property.city}, {property.state} {property.zip_code}
+- **Bedrooms:** {property.num_bedrooms}
+- **Bathrooms:** {property.num_bathrooms}
+- **Square Feet:** {property.sqft or 'N/A'}
+- **Rent Price:** ${property.rent_price}/month
+- **Availability:** {property.status}
+- **Calendly Link for Showings:** {property.calendly_link if property.calendly_link else 'N/A'}
+
+📌 **How Showings & Next Steps Work:**
+- Most people want to **see the property before applying**. That’s great!
+- If you have questions about the property, ask me!
+- If you need to reschedule, just let me know!
+"""

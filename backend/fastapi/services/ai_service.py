@@ -67,7 +67,9 @@ def generate_ai_message(db: Session, lead_id: int, session_id: str, context: str
     # Step 3: Build AI prompt (send message out)
     messages = build_ai_message_history(
         conversation_history,
-        missing_info_question
+        missing_info_question, 
+        lead=lead,
+        db=db
     )
 
     # ✅ LOGGING: Final messages before sending to GPT

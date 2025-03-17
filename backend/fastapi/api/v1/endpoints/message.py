@@ -83,7 +83,9 @@ def test_ai_message_build(
     # Build full message payload
     messages = build_ai_message_history(
         conversation_history,
-        missing_info_question
+        missing_info_question, 
+        lead=lead,
+        db=db
     )
 
     # ✅ Log full messages to check for bad data
