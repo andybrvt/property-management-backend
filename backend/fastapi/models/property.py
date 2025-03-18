@@ -52,6 +52,8 @@ class Property(Base):
     pet_policy_notes = Column(String, nullable=True)  # ✅ Additional pet rules (e.g., "Pet policy is non-negotiable")
 
 
+    # 🔹 **New Door Code Field**
+    door_code = Column(String, nullable=True)  # ✅ Secure entry code for property access
 
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

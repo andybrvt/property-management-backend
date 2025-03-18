@@ -33,6 +33,10 @@ class PropertyBase(BaseModel):
     pet_policy_notes: Optional[str] = None  # ✅ Additional pet rules
 
 
+    # 🔹 **New Secure Entry Code Field**
+    door_code: Optional[str] = None  # ✅ Entry code for property access
+
+
 class PropertyCreate(PropertyBase):
     """Schema for creating a property"""
     owner_id: UUID4  # Required during creation
@@ -66,6 +70,10 @@ class PropertyUpdate(BaseModel):
     outdoor_features: Optional[str] = None
     allows_pets: Optional[bool] = None
     pet_policy_notes: Optional[str] = None
+
+    # 🔹 **New Secure Entry Code Field**
+    door_code: Optional[str] = None  # ✅ Allow updates to door code
+
 
     class Config:
         from_attributes = True  # ✅ Ensures compatibility with SQLAlchemy ORM

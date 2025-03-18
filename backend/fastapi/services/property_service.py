@@ -201,6 +201,10 @@ def get_property_details(db: Session, lead: Lead) -> str:
 - **Allows Pets:** {'Yes' if property.allows_pets else 'No'}
 - **Pet Policy Notes:** {property.pet_policy_notes or 'N/A'}
 
+🔹 **Access & Entry Instructions:**
+- **Door Access Code:** {'Will be provided before your showing' if property.door_code else 'N/A'}
+
+
 📌 **How Showings & Next Steps Work:**
 - Most people want to **see the property before applying**. That’s great!
 - If you have questions about the property, ask me!

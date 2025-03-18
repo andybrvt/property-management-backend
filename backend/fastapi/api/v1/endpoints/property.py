@@ -50,7 +50,7 @@ def get_properties(skip: int = 0, limit: int = 10, db: Session = Depends(get_syn
 @router.put("/property/{property_id}", response_model=PropertyResponse)  # 🔹 Consistent with GET by ID
 def update_property(property_id: UUID, property_data: PropertyUpdate, db: Session = Depends(get_sync_db)):
     """Update property details"""
-    return property_crud.update_property(db, property_id=property_id, property_data=property_data)
+    return property_crud.update_property_crud(db, property_id=property_id, property_data=property_data)
 
 
 @router.get("/properties", response_model=List[PropertyDropdownResponse])
