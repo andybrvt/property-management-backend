@@ -83,6 +83,10 @@ async def calendly_webhook(request: Request, db: Session = Depends(get_sync_db))
 
     # If the lead scheduled a tour, update their status & scheduled date
     if event_type == "invitee.created":
+        if lead.scheduled_showing_date and lead.scheduled_showing_date == scheduled_date:
+            print(f"🔄 Duplicate webhook detected for lead {lead.name} ({formatted_number}). Ignoring.")
+            return {"status": "ignored"}  # Ignore duplicate webhook
+    
         lead.status = "showing_scheduled"
         lead.scheduled_showing_date = scheduled_date
         db.commit()
@@ -91,8 +95,10 @@ async def calendly_webhook(request: Request, db: Session = Depends(get_sync_db))
         ai_message = "Just saw you scheduled, let me know if you need anything else!"
         save_ai_message(db, lead.id, ai_message)
         send_sms(lead.phone, ai_message)
+        return {"status": "success", "lead_id": lead.id, "new_status": lead.status}
 
 
+    
 
     return {"status": "success", "lead_id": lead.id, "new_status": lead.status}
     
@@ -100,6 +106,7 @@ async def calendly_webhook(request: Request, db: Session = Depends(get_sync_db))
 
 
 # /api/v1/calendly/webhook
+# main link: https://fullstack-fastapi-test.up.railway.app
 
 @router.post("/setup-webhook")
 def setup_calendly_webhook(request: WebhookRequest):

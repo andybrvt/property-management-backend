@@ -55,18 +55,27 @@ def get_property_by_address(db: Session, address: str) -> Property:
 
     # Step 1️⃣: Try Exact Match First
     exact_match = db.query(Property).filter(
-        Property.full_address.ilike(f"%{address}%")
+        Property.address.ilike(f"%{address}%")
     ).first()
     
     if exact_match:
         return exact_match  # ✅ Return immediately if exact match is found
+
+        # Step 2️⃣: Try Substring Match
+    potential_matches = db.query(Property).filter(
+        Property.address.ilike(f"%{address}%")
+    ).all()
+
+    if potential_matches:
+        return potential_matches[0]  # ✅ Return first partial match
+
 
     # Step 2️⃣: Try Partial Match (Street, City, State)
     properties = db.query(Property).all()  # ✅ Fetch all properties
 
     # ✅ Ignore properties with no full_address
     property_addresses = {
-        prop.full_address.lower(): prop for prop in properties if prop.full_address
+        prop.address.lower(): prop for prop in properties if prop.address
     }
 
     # Step 3️⃣: Use Fuzzy Matching to Rank Best Match
@@ -165,12 +174,32 @@ def get_property_details(db: Session, lead: Lead) -> str:
     return f"""
 🏡 **Property Details:**
 - **Address:** {property.address}, {property.city}, {property.state} {property.zip_code}
+- **Property Type:** {property.property_type or 'N/A'}
 - **Bedrooms:** {property.num_bedrooms}
 - **Bathrooms:** {property.num_bathrooms}
 - **Square Feet:** {property.sqft or 'N/A'}
 - **Rent Price:** ${property.rent_price}/month
 - **Availability:** {property.status}
+- **Move-in Date:** {property.available_date.strftime('%B %d, %Y') if property.available_date else 'N/A'}
+- **Lease Duration:** {property.lease_duration or 'N/A'}
+- **Security Deposit:** ${property.security_deposit or 'N/A'}
 - **Calendly Link for Showings:** {property.calendly_link if property.calendly_link else 'N/A'}
+
+🔹 **Financial Expectations:**
+- **Landlord Pays:** {property.landlord_pays or 'N/A'}
+- **Tenant Pays:** {property.tenant_pays or 'N/A'}
+- **Renters Insurance Required:** {'Yes' if property.requires_renters_insurance else 'No'}
+
+🔹 **Amenities & Features:**
+- **Laundry:** {'Included' if property.has_laundry else 'Not included'}
+- **Cooling:** {property.cooling_type or 'N/A'}
+- **Appliances:** {property.appliances or 'N/A'}
+- **Parking:** {property.parking_type or 'N/A'}
+- **Outdoor Features:** {property.outdoor_features or 'N/A'}
+
+🔹 **Pet Policy:**
+- **Allows Pets:** {'Yes' if property.allows_pets else 'No'}
+- **Pet Policy Notes:** {property.pet_policy_notes or 'N/A'}
 
 📌 **How Showings & Next Steps Work:**
 - Most people want to **see the property before applying**. That’s great!

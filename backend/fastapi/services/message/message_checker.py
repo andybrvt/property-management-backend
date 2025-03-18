@@ -6,7 +6,7 @@ from backend.fastapi.models.message import Message
 
 logger = logging.getLogger(__name__)
 
-async def wait_and_check_new_messages(db: Session, lead_id: str, cooldown_time: int = 10) -> bool:
+async def wait_and_check_new_messages(db: Session, lead_id: str, cooldown_time: int = 5) -> bool:
     """Waits for cooldown and checks if newer messages arrived."""
     await asyncio.sleep(cooldown_time)
 

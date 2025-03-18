@@ -74,8 +74,10 @@ def extract_lead_details_from_messages(db: Session, lead_id: int, session_id: st
     elif cleaned_data.startswith("```"):
         cleaned_data = cleaned_data.replace("```", "").replace("```", "").strip()
     extracted_info = parse_extracted_lead_info(cleaned_data)
-    if not extracted_info:
-        return
+    
+    if not extracted_info or all(value is None for value in extracted_info.values()):
+        logging.info(f"⚠️ No useful data extracted for Lead {lead_id}. Ignoring update.")
+        return  # 🚨 Exit early if there are no real updates
     
 
     property_updated = False

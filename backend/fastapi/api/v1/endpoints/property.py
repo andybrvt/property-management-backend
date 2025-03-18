@@ -82,3 +82,11 @@ def update_property_calendly_link(
     updated_property = update_property_crud(db, property_id, property_update_data)
 
     return updated_property
+
+@router.delete("/delete-all", response_model=dict)
+def delete_all_properties(db: Session = Depends(get_sync_db)):
+    """Delete all properties from the database."""
+    db.query(Property).delete()  # ✅ Delete all property records
+    db.commit()  # ✅ Commit the transaction
+
+    return {"message": "All properties have been deleted successfully."}
